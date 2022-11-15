@@ -1,0 +1,23 @@
+[package]
+name = "inochi2d"
+version = "0.1.0"
+edition = "2021"
+authors = ["Emmanuel Gil Peyrot <linkmauve@linkmauve.fr>"]
+description = "Pure Rust implementation of Inochi2D, the realtime 2D puppet animation framework"
+homepage = "https://linkmauve.fr/dev/inochi2d/"
+repository = "https://git.linkmauve.fr/inochi2d.git"
+documentation = "https://docs.rs/inochi2d"
+readme = "README.md"
+keywords = ["inochi2d", "graphics", "2d", "opengl"]
+categories = ["game-development", "graphics", "rendering", "rendering::data-formats"]
+license = "MPL-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+glfw = { version = "0.47", default-features = false }
+glow = { version = "0.11.2", default-features = false }
+nom = { version = "7.1", default-features = false }
+serde = { version = "1.0.145", features = ["derive"] }
+serde_json = "1.0.87"
+image = { version = "0.24", default-features = false, features = ["tga"] }
