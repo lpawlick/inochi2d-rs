@@ -146,7 +146,6 @@ pub enum Node {
         angle_damping: f32,
         length_damping: f32,
         output_scale: [f32; 2],
-        opacity: Option<f32>,
     },
 }
 
