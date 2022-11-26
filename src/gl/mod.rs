@@ -13,14 +13,15 @@ const SIZE: u32 = 2048;
 
 const VERTEX: &str = "#version 100
 precision mediump float;
-uniform vec3 trans;
+uniform vec2 trans;
 attribute vec2 pos;
 attribute vec2 uvs;
 attribute vec2 deform;
 varying vec2 texcoord;
 
 void main() {
-    vec2 pos2 = vec2(pos.x + trans.x, -pos.y - trans.y);
+    vec2 pos2 = pos + trans + deform;
+    pos2.y = -pos2.y;
     texcoord = uvs;
     gl_Position = vec4(pos2 / 3072.0, 0.0, 1.0);
 }
@@ -87,6 +88,7 @@ struct GlRenderer<'a> {
     current_ibo_offset: u16,
     verts: Vbo<f32>,
     uvs: Vbo<f32>,
+    deform: Vbo<f32>,
     ibo: Vbo<u16>,
     textures: Vec<glow::NativeTexture>,
     part_program: Program<'a>,
@@ -115,6 +117,7 @@ impl<'a> GlRenderer<'a> {
 
         let verts = Vbo::from(vec![-1., -1., -1., 1., 1., -1., 1., -1., -1., 1., 1., 1.]);
         let uvs = Vbo::from(vec![0., 0., 0., 1., 1., 0., 1., 0., 0., 1., 1., 1.]);
+        let deform = Vbo::from(vec![0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]);
 
         let composite_texture;
         let composite_fbo;
@@ -156,6 +159,7 @@ impl<'a> GlRenderer<'a> {
             current_ibo_offset: 6,
             verts,
             uvs,
+            deform,
             ibo: Vbo::new(),
             locations,
             textures,
@@ -194,8 +198,11 @@ impl<'a> GlRenderer<'a> {
 
                 let start_indice = self.ibo.len() as u16;
                 let num_indices = mesh.indices.len() as u16;
+                let start_deform = self.current_ibo_offset * 2;
                 self.verts.extend_from_slice(mesh.verts.as_slice());
                 self.uvs.extend_from_slice(mesh.uvs.as_slice());
+                self.deform
+                    .extend_from_slice(vec![0.; num_verts].as_slice());
                 self.ibo.extend(
                     mesh.indices
                         .iter()
@@ -210,6 +217,7 @@ impl<'a> GlRenderer<'a> {
                 let part = Part {
                     start_indice,
                     num_indices,
+                    start_deform,
                     transform,
                     blend_mode,
                     textures,
@@ -298,15 +306,21 @@ impl<'a> GlRenderer<'a> {
         let gl = &self.gl;
 
         unsafe {
-            self.verts.upload(gl, glow::ARRAY_BUFFER);
+            self.verts.upload(gl, glow::ARRAY_BUFFER, glow::STATIC_DRAW);
             gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 8, 0);
             gl.enable_vertex_attrib_array(0);
 
-            self.uvs.upload(gl, glow::ARRAY_BUFFER);
+            self.uvs.upload(gl, glow::ARRAY_BUFFER, glow::STATIC_DRAW);
             gl.vertex_attrib_pointer_f32(1, 2, glow::FLOAT, false, 8, 0);
             gl.enable_vertex_attrib_array(1);
 
-            self.ibo.upload(gl, glow::ELEMENT_ARRAY_BUFFER);
+            self.deform
+                .upload(gl, glow::ARRAY_BUFFER, glow::DYNAMIC_DRAW);
+            gl.vertex_attrib_pointer_f32(2, 2, glow::FLOAT, false, 8, 0);
+            gl.enable_vertex_attrib_array(2);
+
+            self.ibo
+                .upload(gl, glow::ELEMENT_ARRAY_BUFFER, glow::STATIC_DRAW);
         }
     }
 
@@ -405,7 +419,7 @@ impl<'a> GlRenderer<'a> {
         let gl = &self.gl;
         self.bind_texture(self.textures[part.textures[0]]);
         self.set_blend_mode(part.blend_mode);
-        gl.uniform_3_f32(self.locations.trans.as_ref(), trans[0], trans[1], trans[2]);
+        gl.uniform_2_f32(self.locations.trans.as_ref(), trans[0], trans[1]);
 
         gl.draw_elements(
             glow::TRIANGLES,
@@ -470,6 +484,7 @@ enum EnumNode {
 struct Part {
     start_indice: u16,
     num_indices: u16,
+    start_deform: u16,
     transform: Transform,
     textures: [usize; 3],
     blend_mode: BlendMode,

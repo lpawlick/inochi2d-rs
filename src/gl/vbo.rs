@@ -35,7 +35,7 @@ impl<T: Copy> Vbo<T> {
         }
     }
 
-    pub unsafe fn upload(&mut self, gl: &glow::Context, target: u32) {
+    pub unsafe fn upload(&mut self, gl: &glow::Context, target: u32, usage: u32) {
         match self {
             Vbo::Buffering(vec) => {
                 let slice = &vec;
@@ -45,7 +45,7 @@ impl<T: Copy> Vbo<T> {
                 );
                 let vbo = gl.create_buffer().unwrap();
                 gl.bind_buffer(target, Some(vbo));
-                gl.buffer_data_u8_slice(target, bytes, glow::STATIC_DRAW);
+                gl.buffer_data_u8_slice(target, bytes, usage);
                 *self = Vbo::Uploaded(vbo);
             }
             _ => panic!("Vbo must not be uploaded yet!"),
