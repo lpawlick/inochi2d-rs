@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::BufReader;
 
 fn print_info(meta: &inochi2d::Meta) {
     if let Some(ref name) = meta.name {
@@ -25,14 +25,9 @@ fn main() {
         eprintln!("Usage: {} <model.inp>", args[0]);
         return;
     }
-    let data = {
-        let file = File::open(&args[1]).unwrap();
-        let mut file = BufReader::new(file);
-        let mut data = Vec::new();
-        file.read_to_end(&mut data).unwrap();
-        data
-    };
-    let mut model = inochi2d::Model::parse(&data).unwrap().1;
+    let file = File::open(&args[1]).unwrap();
+    let file = BufReader::new(file);
+    let mut model = inochi2d::Model::parse(file).unwrap();
     print_info(&model.puppet.meta);
     inochi2d::gl::render(&mut model);
 }

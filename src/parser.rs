@@ -1,10 +1,5 @@
-use nom::{
-    bytes::complete::tag,
-    multi::{length_data, length_value},
-    number::complete::{be_u32, be_u8},
-    IResult,
-};
 use serde::Deserialize;
+use std::io;
 
 const MAGIC: &[u8] = b"TRNSRTS\0";
 const TEX: &[u8] = b"TEX_SECT";
@@ -283,25 +278,28 @@ pub struct Puppet {
 
 #[derive(Debug)]
 pub struct Texture {
+    pub filetype: u8,
     pub data: Vec<u8>,
 }
 
-impl Texture {
-    fn parse(i: &[u8]) -> IResult<&[u8], Texture> {
-        let (i, format) = be_u8(i)?;
-        match format {
-            1 => {
-                let data = i.to_vec();
-                Ok((b"", Texture { data }))
-            }
-            _ => todo!("Unknown format {format}!"),
-        }
-    }
+fn read_be_u32<R: io::Read>(reader: &mut R) -> io::Result<u32> {
+    let mut buf = [0u8; 4];
+    reader.read_exact(&mut buf)?;
+    Ok(u32::from_be_bytes(buf))
 }
 
-fn be_u32_plus_1(i: &[u8]) -> IResult<&[u8], u32> {
-    let (i, int) = be_u32(i)?;
-    Ok((i, 1 + int))
+fn read_array<R: io::Read, const LENGTH: usize>(reader: &mut R) -> io::Result<[u8; LENGTH]> {
+    let mut data = [0u8; LENGTH];
+    reader.read_exact(&mut data)?;
+    Ok(data)
+}
+
+fn read_vec<R: io::Read>(reader: &mut R, length: u32) -> io::Result<Vec<u8>> {
+    let length = length as usize;
+    let mut data = Vec::with_capacity(length);
+    unsafe { data.set_len(length) };
+    reader.read_exact(&mut data)?;
+    Ok(data)
 }
 
 #[derive(Debug)]
@@ -311,20 +309,30 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn parse(i: &[u8]) -> IResult<&[u8], Model> {
-        let (i, _) = tag(MAGIC)(i)?;
-        let (i, json) = length_data(be_u32)(i)?;
-
-        let (i, _) = tag(TEX)(i)?;
-        let (mut i, num_textures) = be_u32(i)?;
-        let mut textures = Vec::new();
-        for _ in 0..num_textures {
-            let (i2, texture) = length_value(be_u32_plus_1, Texture::parse)(i)?;
-            textures.push(texture);
-            i = i2;
+    pub fn parse<R: io::Read>(mut reader: R) -> io::Result<Model> {
+        let magic = read_array::<R, 8>(&mut reader)?;
+        if magic != MAGIC {
+            return Err(io::ErrorKind::InvalidData.into());
         }
 
-        let puppet = serde_json::from_slice(json).unwrap();
-        Ok((i, Model { puppet, textures }))
+        let length = read_be_u32(&mut reader)?;
+        let json = read_vec(&mut reader, length)?;
+        let puppet = serde_json::from_slice(&json).unwrap();
+
+        let magic = read_array::<R, 8>(&mut reader)?;
+        if magic != TEX {
+            return Err(io::ErrorKind::InvalidData.into());
+        }
+
+        let num_textures = read_be_u32(&mut reader)?;
+        let mut textures = Vec::new();
+        for _ in 0..num_textures {
+            let length = read_be_u32(&mut reader)?;
+            let filetype = read_array::<R, 1>(&mut reader)?[0];
+            let data = read_vec(&mut reader, length)?;
+            textures.push(Texture { filetype, data });
+        }
+
+        Ok(Model { puppet, textures })
     }
 }
