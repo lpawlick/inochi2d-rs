@@ -101,39 +101,36 @@ impl<'a> GlRenderer<'a> {
         gl: &'a glow::Context,
         textures: Vec<glow::NativeTexture>,
     ) -> Result<GlRenderer, String> {
-        let (
-            part_program,
-            locations,
-            composite_program,
-            composite_texture,
-            composite_fbo,
-            verts,
-            uvs,
-        ) = unsafe {
+        let part_program = Program::builder(&gl)?
+            .shader(glow::VERTEX_SHADER, VERTEX)?
+            .shader(glow::FRAGMENT_SHADER, FRAGMENT)?
+            .link()?;
+        let mut locations = Locations::new();
+        locations.trans = part_program.get_uniform_location("trans");
+
+        let composite_program = Program::builder(&gl)?
+            .shader(glow::VERTEX_SHADER, VERTEX_PASSTHROUGH)?
+            .shader(glow::FRAGMENT_SHADER, FRAGMENT_PASSTHROUGH)?
+            .link()?;
+
+        let verts = Vbo::from(vec![-1., -1., -1., 1., 1., -1., 1., -1., -1., 1., 1., 1.]);
+        let uvs = Vbo::from(vec![0., 0., 0., 1., 1., 0., 1., 0., 0., 1., 1., 1.]);
+
+        let composite_texture;
+        let composite_fbo;
+        unsafe {
             gl.clear_color(0.0, 0.0, 0.0, 0.0);
             gl.enable(glow::BLEND);
             gl.stencil_mask(0xff);
 
-            let part_program = Program::builder(&gl)?
-                .shader(glow::VERTEX_SHADER, VERTEX)?
-                .shader(glow::FRAGMENT_SHADER, FRAGMENT)?
-                .link()?;
-            let mut locations = Locations::new();
-            locations.trans = part_program.get_uniform_location("trans");
-
-            let composite_program = Program::builder(&gl)?
-                .shader(glow::VERTEX_SHADER, VERTEX_PASSTHROUGH)?
-                .shader(glow::FRAGMENT_SHADER, FRAGMENT_PASSTHROUGH)?
-                .link()?;
-
-            let texture = Self::upload_texture(&gl, SIZE, SIZE, glow::RGBA, None);
-            let framebuffer = gl.create_framebuffer().unwrap();
-            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(framebuffer));
+            composite_texture = Self::upload_texture(&gl, SIZE, SIZE, glow::RGBA, None);
+            composite_fbo = gl.create_framebuffer().unwrap();
+            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(composite_fbo));
             gl.framebuffer_texture_2d(
                 glow::FRAMEBUFFER,
                 glow::COLOR_ATTACHMENT0,
                 glow::TEXTURE_2D,
-                Some(texture),
+                Some(composite_texture),
                 0,
             );
             assert_eq!(
@@ -141,19 +138,6 @@ impl<'a> GlRenderer<'a> {
                 glow::FRAMEBUFFER_COMPLETE
             );
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
-
-            let verts = Vbo::from(vec![-1., -1., -1., 1., 1., -1., 1., -1., -1., 1., 1., 1.]);
-            let uvs = Vbo::from(vec![0., 0., 0., 1., 1., 0., 1., 0., 0., 1., 1., 1.]);
-
-            (
-                part_program,
-                locations,
-                composite_program,
-                texture,
-                framebuffer,
-                verts,
-                uvs,
-            )
         };
 
         let mutable = std::cell::RefCell::new(MutableStuff {
