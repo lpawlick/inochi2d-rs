@@ -298,24 +298,15 @@ impl<'a> GlRenderer<'a> {
         let gl = &self.gl;
 
         unsafe {
-            let vbo = gl.create_buffer().unwrap();
-            gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
             self.verts.upload(gl, glow::ARRAY_BUFFER);
             gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 8, 0);
             gl.enable_vertex_attrib_array(0);
-            self.verts = Vbo::Uploaded(vbo);
 
-            let vbo = gl.create_buffer().unwrap();
-            gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
             self.uvs.upload(gl, glow::ARRAY_BUFFER);
             gl.vertex_attrib_pointer_f32(1, 2, glow::FLOAT, false, 8, 0);
             gl.enable_vertex_attrib_array(1);
-            self.uvs = Vbo::Uploaded(vbo);
 
-            let ibo = gl.create_buffer().unwrap();
-            gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(ibo));
             self.ibo.upload(gl, glow::ELEMENT_ARRAY_BUFFER);
-            self.ibo = Vbo::Uploaded(ibo);
         }
     }
 
