@@ -6,6 +6,9 @@ use std::collections::BTreeMap;
 mod vbo;
 use vbo::Vbo;
 
+mod program;
+use program::Program;
+
 const SIZE: u32 = 2048;
 
 const VERTEX: &str = "#version 100
@@ -77,8 +80,8 @@ struct MutableStuff {
     prev_masks: Vec<Mask>,
 }
 
-struct GlRenderer {
-    gl: glow::Context,
+struct GlRenderer<'a> {
+    gl: &'a glow::Context,
     nodes: BTreeMap<u32, EnumNode>,
     mutable: std::cell::RefCell<MutableStuff>,
     current_ibo_offset: u16,
@@ -86,15 +89,18 @@ struct GlRenderer {
     uvs: Vbo<f32>,
     ibo: Vbo<u16>,
     textures: Vec<glow::NativeTexture>,
-    part_program: glow::NativeProgram,
+    part_program: Program<'a>,
     locations: Locations,
-    composite_program: glow::NativeProgram,
+    composite_program: Program<'a>,
     composite_fbo: glow::NativeFramebuffer,
     composite_texture: glow::NativeTexture,
 }
 
-impl GlRenderer {
-    fn new(gl: glow::Context, textures: Vec<glow::NativeTexture>) -> GlRenderer {
+impl<'a> GlRenderer<'a> {
+    fn new(
+        gl: &'a glow::Context,
+        textures: Vec<glow::NativeTexture>,
+    ) -> Result<GlRenderer, String> {
         let (
             part_program,
             locations,
@@ -108,11 +114,17 @@ impl GlRenderer {
             gl.enable(glow::BLEND);
             gl.stencil_mask(0xff);
 
-            let part_program = Self::compile(&gl, VERTEX, FRAGMENT);
+            let part_program = Program::builder(&gl)?
+                .shader(glow::VERTEX_SHADER, VERTEX)?
+                .shader(glow::FRAGMENT_SHADER, FRAGMENT)?
+                .link()?;
             let mut locations = Locations::new();
-            locations.trans = gl.get_uniform_location(part_program, "trans");
+            locations.trans = part_program.get_uniform_location("trans");
 
-            let composite_program = Self::compile(&gl, VERTEX_PASSTHROUGH, FRAGMENT_PASSTHROUGH);
+            let composite_program = Program::builder(&gl)?
+                .shader(glow::VERTEX_SHADER, VERTEX_PASSTHROUGH)?
+                .shader(glow::FRAGMENT_SHADER, FRAGMENT_PASSTHROUGH)?
+                .link()?;
 
             let texture = Self::upload_texture(&gl, SIZE, SIZE, glow::RGBA, None);
             let framebuffer = gl.create_framebuffer().unwrap();
@@ -153,7 +165,7 @@ impl GlRenderer {
         });
 
         let nodes = BTreeMap::new();
-        GlRenderer {
+        Ok(GlRenderer {
             gl,
             nodes,
             mutable,
@@ -167,7 +179,7 @@ impl GlRenderer {
             composite_program,
             composite_texture,
             composite_fbo,
-        }
+        })
     }
 
     fn flatten_nodes(&mut self, node: &Node, parent: Option<u32>) {
@@ -323,33 +335,6 @@ impl GlRenderer {
         }
     }
 
-    unsafe fn compile(gl: &glow::Context, vertex: &str, fragment: &str) -> glow::NativeProgram {
-        let program = gl.create_program().unwrap();
-
-        let shader = gl.create_shader(glow::VERTEX_SHADER).unwrap();
-        gl.shader_source(shader, vertex);
-        gl.compile_shader(shader);
-        if !gl.get_shader_compile_status(shader) {
-            panic!("{}", gl.get_shader_info_log(shader));
-        }
-        gl.attach_shader(program, shader);
-
-        let shader = gl.create_shader(glow::FRAGMENT_SHADER).unwrap();
-        gl.shader_source(shader, fragment);
-        gl.compile_shader(shader);
-        if !gl.get_shader_compile_status(shader) {
-            panic!("{}", gl.get_shader_info_log(shader));
-        }
-        gl.attach_shader(program, shader);
-
-        gl.link_program(program);
-        if !gl.get_program_link_status(program) {
-            panic!("{}", gl.get_program_info_log(program));
-        }
-
-        program
-    }
-
     fn push(&mut self, uuid: u32, buf: EnumNode) {
         self.nodes.insert(uuid, buf);
     }
@@ -372,14 +357,14 @@ impl GlRenderer {
         *prev = stencil;
     }
 
-    unsafe fn use_program(&self, program: glow::NativeProgram) {
+    unsafe fn use_program(&self, program: &Program) {
         let prev = &mut self.mutable.borrow_mut().prev_program;
-        if *prev == Some(program) {
+        if *prev == Some(program.program) {
             return;
         }
         let gl = &self.gl;
-        gl.use_program(Some(program));
-        *prev = Some(program);
+        gl.use_program(Some(program.program));
+        *prev = Some(program.program);
     }
 
     unsafe fn bind_texture(&self, texture: glow::NativeTexture) {
@@ -434,7 +419,7 @@ impl GlRenderer {
     }
 
     unsafe fn render_part(&self, part: &Part) {
-        self.use_program(self.part_program);
+        self.use_program(&self.part_program);
 
         if !part.masks.is_empty() {
             self.recompute_masks(part);
@@ -464,7 +449,7 @@ impl GlRenderer {
         gl.bind_framebuffer(glow::FRAMEBUFFER, None);
         self.bind_texture(self.composite_texture);
         self.set_blend_mode(composite.blend_mode);
-        self.use_program(self.composite_program);
+        self.use_program(&self.composite_program);
         gl.draw_arrays(glow::TRIANGLES, 0, 6);
     }
 
@@ -593,7 +578,7 @@ pub fn render(model: &mut Model) {
         .map(|texture| GlRenderer::load_texture(&gl, &texture.data))
         .collect();
 
-    let mut renderer = GlRenderer::new(gl, textures);
+    let mut renderer = GlRenderer::new(&gl, textures).unwrap();
     renderer.flatten_nodes(&model.puppet.nodes, None);
     renderer.upload_buffers();
 
