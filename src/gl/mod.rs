@@ -86,10 +86,10 @@ struct GlRenderer<'a> {
     nodes: BTreeMap<u32, EnumNode>,
     mutable: std::cell::RefCell<MutableStuff>,
     current_ibo_offset: u16,
-    verts: Vbo<f32>,
-    uvs: Vbo<f32>,
-    deform: Vbo<f32>,
-    ibo: Vbo<u16>,
+    verts: Vbo<'a, f32>,
+    uvs: Vbo<'a, f32>,
+    deform: Vbo<'a, f32>,
+    ibo: Vbo<'a, u16>,
     textures: Vec<glow::NativeTexture>,
     part_program: Program<'a>,
     locations: Locations,
@@ -115,9 +115,13 @@ impl<'a> GlRenderer<'a> {
             .shader(glow::FRAGMENT_SHADER, FRAGMENT_PASSTHROUGH)?
             .link()?;
 
-        let verts = Vbo::from(vec![-1., -1., -1., 1., 1., -1., 1., -1., -1., 1., 1., 1.]);
-        let uvs = Vbo::from(vec![0., 0., 0., 1., 1., 0., 1., 0., 0., 1., 1., 1.]);
-        let deform = Vbo::from(vec![0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]);
+        let verts = Vbo::from(
+            gl,
+            vec![-1., -1., -1., 1., 1., -1., 1., -1., -1., 1., 1., 1.],
+        );
+        let uvs = Vbo::from(gl, vec![0., 0., 0., 1., 1., 0., 1., 0., 0., 1., 1., 1.]);
+        let deform = Vbo::from(gl, vec![0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]);
+        let ibo = Vbo::new(gl);
 
         let composite_texture;
         let composite_fbo;
@@ -160,7 +164,7 @@ impl<'a> GlRenderer<'a> {
             verts,
             uvs,
             deform,
-            ibo: Vbo::new(),
+            ibo,
             locations,
             textures,
             part_program,
@@ -311,21 +315,20 @@ impl<'a> GlRenderer<'a> {
         let gl = &self.gl;
 
         unsafe {
-            self.verts.upload(gl, glow::ARRAY_BUFFER, glow::STATIC_DRAW);
+            self.verts.upload(glow::ARRAY_BUFFER, glow::STATIC_DRAW);
             gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 8, 0);
             gl.enable_vertex_attrib_array(0);
 
-            self.uvs.upload(gl, glow::ARRAY_BUFFER, glow::STATIC_DRAW);
+            self.uvs.upload(glow::ARRAY_BUFFER, glow::STATIC_DRAW);
             gl.vertex_attrib_pointer_f32(1, 2, glow::FLOAT, false, 8, 0);
             gl.enable_vertex_attrib_array(1);
 
-            self.deform
-                .upload(gl, glow::ARRAY_BUFFER, glow::DYNAMIC_DRAW);
+            self.deform.upload(glow::ARRAY_BUFFER, glow::DYNAMIC_DRAW);
             gl.vertex_attrib_pointer_f32(2, 2, glow::FLOAT, false, 8, 0);
             gl.enable_vertex_attrib_array(2);
 
             self.ibo
-                .upload(gl, glow::ELEMENT_ARRAY_BUFFER, glow::STATIC_DRAW);
+                .upload(glow::ELEMENT_ARRAY_BUFFER, glow::STATIC_DRAW);
         }
     }
 
