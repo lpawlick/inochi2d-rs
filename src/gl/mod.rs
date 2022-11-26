@@ -1,6 +1,7 @@
 use crate::{BlendMode, Mask, Model, Node, Texture, Transform};
 use glfw::{Action, Context, Key};
 use glow::HasContext;
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 mod vbo;
@@ -84,7 +85,7 @@ struct MutableStuff {
 struct GlRenderer<'a> {
     gl: &'a glow::Context,
     nodes: BTreeMap<u32, EnumNode>,
-    mutable: std::cell::RefCell<MutableStuff>,
+    mutable: RefCell<MutableStuff>,
     current_ibo_offset: u16,
     verts: Vbo<'a, f32>,
     uvs: Vbo<'a, f32>,
@@ -147,7 +148,7 @@ impl<'a> GlRenderer<'a> {
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
         };
 
-        let mutable = std::cell::RefCell::new(MutableStuff {
+        let mutable = RefCell::new(MutableStuff {
             prev_program: None,
             prev_stencil: false,
             prev_blend_mode: None,
