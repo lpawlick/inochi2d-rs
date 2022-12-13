@@ -1,10 +1,10 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::io;
 
 const MAGIC: &[u8] = b"TRNSRTS\0";
 const TEX: &[u8] = b"TEX_SECT";
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Meta {
     pub name: Option<String>,
@@ -21,14 +21,14 @@ pub struct Meta {
     preserve_pixels: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Physics {
     pixels_per_meter: f32,
     gravity: f32,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Transform {
     pub trans: [f32; 3],
@@ -36,7 +36,7 @@ pub struct Transform {
     scale: [f32; 2],
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Mesh {
     pub verts: Vec<f32>,
@@ -45,29 +45,29 @@ pub struct Mesh {
     origin: [f32; 2],
 }
 
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
 enum MaskMode {
     Mask,
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Mask {
     pub source: u32,
     mode: MaskMode,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum ModelType {
     SpringPendulum,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum MapMode {
     XY,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub enum BlendMode {
     Multiply,
     Normal,
@@ -77,7 +77,7 @@ pub enum BlendMode {
     ClipToLower,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields, tag = "type")]
 pub enum Node {
     Node {
@@ -169,12 +169,12 @@ impl Node {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum InterpolateMode {
     Linear,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields, tag = "param_name")]
 pub enum Binding {
     #[serde(rename = "zSort")]
@@ -251,7 +251,7 @@ pub enum Binding {
     },
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Param {
     uuid: u32,
@@ -264,7 +264,7 @@ pub struct Param {
     pub bindings: Vec<Binding>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Puppet {
     pub meta: Meta,
@@ -379,5 +379,26 @@ impl Model {
         }
 
         Ok(Model { puppet, textures })
+    }
+
+    pub fn serialize<W: io::Write>(&self, mut writer: W) -> io::Result<()> {
+        writer.write_all(MAGIC)?;
+        let json = serde_json::to_vec(&self.puppet)?;
+        writer.write_all(&(json.len() as u32).to_be_bytes())?;
+        writer.write_all(&json)?;
+        writer.write_all(TEX)?;
+        writer.write_all(&(self.textures.len() as u32).to_be_bytes())?;
+        for texture in self.textures.iter() {
+            let (format, data) = match texture {
+                Texture::Png(data) => (0u8, data),
+                Texture::Tga(data) => (1u8, data),
+                Texture::Bc7(data) => (2u8, data),
+                Texture::Decoded { .. } => todo!("Automated encoding of textures unsupported."),
+            };
+            writer.write_all(&(data.len() as u32).to_be_bytes())?;
+            writer.write_all(&[format])?;
+            writer.write_all(&data)?;
+        }
+        Ok(())
     }
 }
