@@ -6,4 +6,4 @@
 pub mod gl;
 mod parser;
 
-pub use parser::{BlendMode, Mask, Meta, Model, Node, Puppet, Transform};
+pub use parser::{BlendMode, Mask, Meta, Model, Node, Puppet, Texture, Transform};

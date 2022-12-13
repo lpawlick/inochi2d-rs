@@ -1,4 +1,4 @@
-use crate::{BlendMode, Mask, Model, Node, Transform};
+use crate::{BlendMode, Mask, Model, Node, Texture, Transform};
 use glfw::{Action, Context, Key};
 use glow::HasContext;
 use std::collections::BTreeMap;
@@ -288,17 +288,22 @@ impl<'a> GlRenderer<'a> {
         texture
     }
 
-    fn load_texture(gl: &glow::Context, tex: &[u8]) -> glow::NativeTexture {
-        match image::load_from_memory_with_format(tex, image::ImageFormat::Tga).unwrap() {
-            image::DynamicImage::ImageRgba8(ref image) => {
-                let (width, height) = image.dimensions();
-                unsafe { Self::upload_texture(gl, width, height, glow::RGBA, Some(image)) }
+    fn load_texture(gl: &glow::Context, tex: &Texture) -> glow::NativeTexture {
+        match tex {
+            Texture::Decoded {
+                width,
+                height,
+                channels,
+                data,
+            } => {
+                let format = match channels {
+                    3 => glow::RGB,
+                    4 => glow::RGBA,
+                    _ => panic!("Unknown amount of channels {channels}"),
+                };
+                unsafe { Self::upload_texture(gl, *width, *height, format, Some(data)) }
             }
-            image::DynamicImage::ImageRgb8(ref image) => {
-                let (width, height) = image.dimensions();
-                unsafe { Self::upload_texture(gl, width, height, glow::RGB, Some(image)) }
-            }
-            image => todo!("Unsupported image: {:?}", image),
+            _ => todo!("Unsupported image format: {tex:?}"),
         }
     }
 
@@ -562,10 +567,14 @@ pub fn render(model: &mut Model) {
     let gl =
         unsafe { glow::Context::from_loader_function(|s| window.get_proc_address(s) as *const _) };
 
+    for tex in model.textures.iter_mut() {
+        tex.decode();
+    }
+
     let textures: Vec<_> = model
         .textures
         .iter()
-        .map(|texture| GlRenderer::load_texture(&gl, &texture.data))
+        .map(|texture| GlRenderer::load_texture(&gl, &texture))
         .collect();
 
     let mut renderer = GlRenderer::new(&gl, textures).unwrap();

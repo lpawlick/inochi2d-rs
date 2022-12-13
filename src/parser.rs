@@ -276,9 +276,49 @@ pub struct Puppet {
 }
 
 #[derive(Debug)]
-pub struct Texture {
-    pub filetype: u8,
-    pub data: Vec<u8>,
+pub enum Texture {
+    Png(Vec<u8>),
+    Tga(Vec<u8>),
+    Bc7(Vec<u8>),
+    Decoded {
+        width: u32,
+        height: u32,
+        channels: u8,
+        data: Vec<u8>,
+    },
+}
+
+impl Texture {
+    pub fn decode(&mut self) {
+        let (data, format) = match self {
+            Texture::Png(data) => (data, image::ImageFormat::Png),
+            Texture::Tga(data) => (data, image::ImageFormat::Tga),
+            Texture::Bc7(data) => todo!("BC7 is still unimplemented"),
+            // Nothing to do!
+            Texture::Decoded { .. } => return,
+        };
+        match image::load_from_memory_with_format(data, format).unwrap() {
+            image::DynamicImage::ImageRgba8(ref image) => {
+                let (width, height) = image.dimensions();
+                *self = Texture::Decoded {
+                    width,
+                    height,
+                    channels: 4,
+                    data: image.to_vec(),
+                };
+            }
+            image::DynamicImage::ImageRgb8(ref image) => {
+                let (width, height) = image.dimensions();
+                *self = Texture::Decoded {
+                    width,
+                    height,
+                    channels: 3,
+                    data: image.to_vec(),
+                };
+            }
+            image => todo!("Unsupported image: {:?}", image),
+        }
+    }
 }
 
 fn read_be_u32<R: io::Read>(reader: &mut R) -> io::Result<u32> {
@@ -327,9 +367,15 @@ impl Model {
         let mut textures = Vec::new();
         for _ in 0..num_textures {
             let length = read_be_u32(&mut reader)?;
-            let filetype = read_array::<R, 1>(&mut reader)?[0];
+            let format = read_array::<R, 1>(&mut reader)?[0];
             let data = read_vec(&mut reader, length)?;
-            textures.push(Texture { filetype, data });
+            let texture = match format {
+                0 => Texture::Png(data),
+                1 => Texture::Tga(data),
+                2 => Texture::Bc7(data),
+                _ => panic!("Unknown format {format}"),
+            };
+            textures.push(texture);
         }
 
         Ok(Model { puppet, textures })
