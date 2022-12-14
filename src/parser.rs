@@ -319,6 +319,35 @@ impl Texture {
             image => todo!("Unsupported image: {:?}", image),
         }
     }
+
+    pub fn encode(&mut self, format: image::ImageFormat) {
+        match self {
+            Texture::Decoded {
+                width,
+                height,
+                channels,
+                data,
+            } => {
+                let colortype = match channels {
+                    3 => image::ColorType::Rgb8,
+                    4 => image::ColorType::Rgba8,
+                    _ => panic!("Unsupported channels: {channels}"),
+                };
+                let buf = Vec::new();
+                let mut buf = std::io::Cursor::new(buf);
+                image::write_buffer_with_format(
+                    &mut buf, &data, *width, *height, colortype, format,
+                )
+                .unwrap();
+                *self = match format {
+                    image::ImageFormat::Png => Texture::Png(buf.into_inner()),
+                    image::ImageFormat::Tga => Texture::Tga(buf.into_inner()),
+                    _ => panic!("Unsupported format {format:?}"),
+                }
+            }
+            _ => panic!("Unsupported image: {self:?}"),
+        }
+    }
 }
 
 fn read_be_u32<R: io::Read>(reader: &mut R) -> io::Result<u32> {
