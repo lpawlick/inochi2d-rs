@@ -196,6 +196,7 @@ impl<'a> GlRenderer<'a> {
                 textures,
                 ref masks,
                 ref children,
+                ref name,
                 ..
             } => {
                 let num_verts = mesh.verts.len();
@@ -218,6 +219,7 @@ impl<'a> GlRenderer<'a> {
                 let parent = parent.unwrap();
                 let transform = transform.clone();
                 let masks = masks.clone();
+                let name = name.clone();
 
                 let part = Part {
                     start_indice,
@@ -228,6 +230,7 @@ impl<'a> GlRenderer<'a> {
                     textures,
                     parent,
                     masks,
+                    name,
                 };
                 self.push(uuid, EnumNode::Part(part));
                 for child in children.iter() {
@@ -239,17 +242,20 @@ impl<'a> GlRenderer<'a> {
                 ref transform,
                 blend_mode,
                 ref children,
+                ref name,
                 ..
             } => {
                 let parent = parent.unwrap();
                 let transform = transform.clone();
                 let children_uuid = children.iter().flat_map(collect_children_uuids).collect();
+                let name = name.clone();
 
                 let composite = Composite {
                     transform,
                     blend_mode,
                     parent,
                     children: children_uuid,
+                    name,
                 };
                 self.push(uuid, EnumNode::Composite(composite));
                 for child in children.iter() {
@@ -452,14 +458,19 @@ impl<'a> GlRenderer<'a> {
     }
 
     fn render_nodes(&self, order: &[u32]) {
+        let gl = self.gl;
         for &uuid in order {
             match self.get(uuid).unwrap() {
                 EnumNode::Part(part) => unsafe {
+                    gl.push_debug_group(glow::DEBUG_SOURCE_APPLICATION, 0, &part.name);
                     self.set_stencil(false);
                     self.render_part(part);
+                    gl.pop_debug_group();
                 },
                 EnumNode::Composite(composite) => unsafe {
+                    gl.push_debug_group(glow::DEBUG_SOURCE_APPLICATION, 0, &composite.name);
                     self.render_composite(composite);
+                    gl.pop_debug_group();
                 },
                 EnumNode::Node => (),
                 EnumNode::SimplePhysics => (),
@@ -480,6 +491,7 @@ struct Composite {
     blend_mode: BlendMode,
     parent: u32,
     children: Vec<u32>,
+    name: String,
 }
 
 enum EnumNode {
@@ -499,6 +511,7 @@ struct Part {
     blend_mode: BlendMode,
     parent: u32,
     masks: Vec<Mask>,
+    name: String,
 }
 
 impl Part {
