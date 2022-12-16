@@ -283,7 +283,6 @@ pub enum Texture {
     Decoded {
         width: u32,
         height: u32,
-        channels: u8,
         data: Vec<u8>,
     },
 }
@@ -304,7 +303,6 @@ impl Texture {
         *self = Texture::Decoded {
             width,
             height,
-            channels: 4,
             data: image.to_vec(),
         };
     }
@@ -314,18 +312,17 @@ impl Texture {
             Texture::Decoded {
                 width,
                 height,
-                channels,
                 data,
             } => {
-                let colortype = match channels {
-                    3 => image::ColorType::Rgb8,
-                    4 => image::ColorType::Rgba8,
-                    _ => panic!("Unsupported channels: {channels}"),
-                };
                 let buf = Vec::new();
                 let mut buf = std::io::Cursor::new(buf);
                 image::write_buffer_with_format(
-                    &mut buf, &data, *width, *height, colortype, format,
+                    &mut buf,
+                    &data,
+                    *width,
+                    *height,
+                    image::ColorType::Rgba8,
+                    format,
                 )
                 .unwrap();
                 *self = match format {

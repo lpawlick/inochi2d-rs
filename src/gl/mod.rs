@@ -131,7 +131,7 @@ impl<'a> GlRenderer<'a> {
             gl.enable(glow::BLEND);
             gl.stencil_mask(0xff);
 
-            composite_texture = Self::upload_texture(&gl, SIZE, SIZE, glow::RGBA, None);
+            composite_texture = Self::upload_texture(&gl, SIZE, SIZE, None);
             composite_fbo = gl.create_framebuffer().unwrap();
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(composite_fbo));
             gl.framebuffer_texture_2d(
@@ -269,7 +269,6 @@ impl<'a> GlRenderer<'a> {
         gl: &glow::Context,
         width: u32,
         height: u32,
-        format: u32,
         data: Option<&[u8]>,
     ) -> glow::NativeTexture {
         let texture = gl.create_texture().unwrap();
@@ -287,11 +286,11 @@ impl<'a> GlRenderer<'a> {
         gl.tex_image_2d(
             glow::TEXTURE_2D,
             0,
-            format as i32,
+            glow::RGBA as i32,
             width as i32,
             height as i32,
             0,
-            format,
+            glow::RGBA,
             glow::UNSIGNED_BYTE,
             data,
         );
@@ -304,16 +303,8 @@ impl<'a> GlRenderer<'a> {
             Texture::Decoded {
                 width,
                 height,
-                channels,
                 data,
-            } => {
-                let format = match channels {
-                    3 => glow::RGB,
-                    4 => glow::RGBA,
-                    _ => panic!("Unknown amount of channels {channels}"),
-                };
-                unsafe { Self::upload_texture(gl, *width, *height, format, Some(data)) }
-            }
+            } => unsafe { Self::upload_texture(gl, *width, *height, Some(data)) },
             _ => todo!("Unsupported image format: {tex:?}"),
         }
     }
