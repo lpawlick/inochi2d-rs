@@ -3,6 +3,7 @@ use glfw::{Action, Context, Key};
 use glow::HasContext;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::sync::mpsc;
 
 mod vbo;
 use vbo::Vbo;
@@ -560,7 +561,52 @@ fn sort_nodes_by_zsort(node: &Node) -> Vec<u32> {
     sort_uuids_by_zsort(uuids)
 }
 
+fn decode_textures_parallel(textures: &mut Vec<Texture>) -> mpsc::Receiver<(usize, Texture)> {
+    let mut num_threads = std::thread::available_parallelism().unwrap().get();
+    if num_threads > 1 {
+        num_threads -= 1;
+    }
+
+    let (tx2, rx2) = mpsc::channel();
+    let mut pipes = Vec::new();
+    for _ in 0..num_threads {
+        let (tx, rx) = mpsc::channel::<(usize, Texture)>();
+        let tx2 = tx2.clone();
+        std::thread::Builder::new()
+            .name(String::from("Texture Decoder"))
+            .spawn(move || {
+                while let Ok((i, mut tex)) = rx.recv() {
+                    tex.decode();
+                    tx2.send((i, tex)).unwrap();
+                }
+            })
+            .unwrap();
+        pipes.push(tx);
+    }
+
+    for ((i, tex), tx) in textures.drain(..).enumerate().zip(pipes.iter().cycle()) {
+        tx.send((i, tex)).unwrap();
+    }
+
+    rx2
+}
+
+fn upload_textures(
+    gl: &glow::Context,
+    rx: mpsc::Receiver<(usize, Texture)>,
+) -> Vec<glow::NativeTexture> {
+    let mut map = BTreeMap::new();
+    while let Ok((i, tex)) = rx.recv() {
+        let texture = GlRenderer::load_texture(gl, &tex);
+        map.insert(i, texture);
+    }
+    map.into_values().collect()
+}
+
 pub fn render(model: &mut Model) {
+    // We start decoding textures on threads…
+    let rx = decode_textures_parallel(&mut model.textures);
+
     let mut glfw = glfw::init(glfw::LOG_ERRORS).unwrap();
     glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::OpenGlEs));
     glfw.window_hint(glfw::WindowHint::ContextVersion(2, 0));
@@ -575,15 +621,8 @@ pub fn render(model: &mut Model) {
     let gl =
         unsafe { glow::Context::from_loader_function(|s| window.get_proc_address(s) as *const _) };
 
-    for tex in model.textures.iter_mut() {
-        tex.decode();
-    }
-
-    let textures: Vec<_> = model
-        .textures
-        .iter()
-        .map(|texture| GlRenderer::load_texture(&gl, &texture))
-        .collect();
+    // … So that here hopefully some have already been decoded, while we were setting up GLES.
+    let textures = upload_textures(&gl, rx);
 
     let mut renderer = GlRenderer::new(&gl, textures).unwrap();
     renderer.flatten_nodes(&model.puppet.nodes, None);
