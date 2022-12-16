@@ -297,27 +297,16 @@ impl Texture {
             // Nothing to do!
             Texture::Decoded { .. } => return,
         };
-        match image::load_from_memory_with_format(data, format).unwrap() {
-            image::DynamicImage::ImageRgba8(ref image) => {
-                let (width, height) = image.dimensions();
-                *self = Texture::Decoded {
-                    width,
-                    height,
-                    channels: 4,
-                    data: image.to_vec(),
-                };
-            }
-            image::DynamicImage::ImageRgb8(ref image) => {
-                let (width, height) = image.dimensions();
-                *self = Texture::Decoded {
-                    width,
-                    height,
-                    channels: 3,
-                    data: image.to_vec(),
-                };
-            }
-            image => todo!("Unsupported image: {:?}", image),
-        }
+        let image = image::load_from_memory_with_format(data, format)
+            .unwrap()
+            .into_rgba8();
+        let (width, height) = image.dimensions();
+        *self = Texture::Decoded {
+            width,
+            height,
+            channels: 4,
+            data: image.to_vec(),
+        };
     }
 
     pub fn encode(&mut self, format: image::ImageFormat) {
