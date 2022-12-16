@@ -289,21 +289,44 @@ pub enum Texture {
 
 impl Texture {
     pub fn decode(&mut self) {
-        let (data, format) = match self {
-            Texture::Png(data) => (data, image::ImageFormat::Png),
-            Texture::Tga(data) => (data, image::ImageFormat::Tga),
+        use image::ImageDecoder;
+        let (data, color_type, width, height) = match self {
+            Texture::Png(data) => {
+                let cursor = io::Cursor::new(data);
+                let decoder = image::codecs::png::PngDecoder::new(cursor).unwrap();
+                let (width, height) = decoder.dimensions();
+                let mut data = vec![0u8; decoder.total_bytes() as usize];
+                let color_type = decoder.color_type();
+                decoder.read_image(&mut data).unwrap();
+                (data, color_type, width, height)
+            }
+            Texture::Tga(data) => {
+                let cursor = io::Cursor::new(data);
+                let decoder = image::codecs::tga::TgaDecoder::new(cursor).unwrap();
+                let (width, height) = decoder.dimensions();
+                let mut data = vec![0u8; decoder.total_bytes() as usize];
+                let color_type = decoder.color_type();
+                decoder.read_image(&mut data).unwrap();
+                (data, color_type, width, height)
+            }
             Texture::Bc7(data) => todo!("BC7 is still unimplemented"),
             // Nothing to do!
             Texture::Decoded { .. } => return,
         };
-        let image = image::load_from_memory_with_format(data, format)
-            .unwrap()
-            .into_rgba8();
-        let (width, height) = image.dimensions();
+        let data = match color_type {
+            image::ColorType::Rgba8 => data,
+            image::ColorType::Rgb8 => {
+                let rgb = image::ImageBuffer::from_raw(width, height, data).unwrap();
+                let dynamic = image::DynamicImage::ImageRgb8(rgb);
+                let rgba = dynamic.into_rgba8();
+                rgba.into_vec()
+            }
+            _ => panic!("Unknown color type {color_type:?}"),
+        };
         *self = Texture::Decoded {
             width,
             height,
-            data: image.to_vec(),
+            data,
         };
     }
 
