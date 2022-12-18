@@ -594,17 +594,19 @@ fn decode_textures_parallel(textures: &mut Vec<Texture>) -> mpsc::Receiver<(usiz
 fn upload_textures(
     gl: &glow::Context,
     rx: mpsc::Receiver<(usize, Texture)>,
+    num_textures: usize,
 ) -> Vec<glow::NativeTexture> {
-    let mut map = BTreeMap::new();
+    let mut vec = vec![None; num_textures];
     while let Ok((i, tex)) = rx.recv() {
         let texture = GlRenderer::load_texture(gl, &tex);
-        map.insert(i, texture);
+        vec[i] = Some(texture);
     }
-    map.into_values().collect()
+    vec.into_iter().map(Option::unwrap).collect()
 }
 
 pub fn render(model: &mut Model) {
     // We start decoding textures on threads…
+    let num_textures = model.textures.len();
     let rx = decode_textures_parallel(&mut model.textures);
 
     let mut glfw = glfw::init(glfw::LOG_ERRORS).unwrap();
@@ -622,7 +624,7 @@ pub fn render(model: &mut Model) {
         unsafe { glow::Context::from_loader_function(|s| window.get_proc_address(s) as *const _) };
 
     // … So that here hopefully some have already been decoded, while we were setting up GLES.
-    let textures = upload_textures(&gl, rx);
+    let textures = upload_textures(&gl, rx, num_textures);
 
     let mut renderer = GlRenderer::new(&gl, textures).unwrap();
     renderer.flatten_nodes(&model.puppet.nodes, None);
