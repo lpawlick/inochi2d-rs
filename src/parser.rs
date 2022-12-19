@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::io;
+use crate::tga;
 
 const MAGIC: &[u8] = b"TRNSRTS\0";
 const TEX: &[u8] = b"TEX_SECT";
@@ -301,13 +302,13 @@ impl Texture {
                 (data, color_type, width, height)
             }
             Texture::Tga(data) => {
-                let cursor = io::Cursor::new(data);
-                let decoder = image::codecs::tga::TgaDecoder::new(cursor).unwrap();
-                let (width, height) = decoder.dimensions();
-                let mut data = vec![0u8; decoder.total_bytes() as usize];
-                let color_type = decoder.color_type();
-                decoder.read_image(&mut data).unwrap();
-                (data, color_type, width, height)
+                let (width, height, data) = tga::decode(data);
+                *self = Texture::Decoded {
+                    width,
+                    height,
+                    data,
+                };
+                return;
             }
             Texture::Bc7(data) => todo!("BC7 is still unimplemented"),
             // Nothing to do!

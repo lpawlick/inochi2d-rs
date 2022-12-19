@@ -24,7 +24,7 @@ varying vec2 texcoord;
 void main() {
     vec2 pos2 = pos + trans + deform;
     pos2.y = -pos2.y;
-    texcoord = uvs;
+    texcoord = vec2(uvs.x, -uvs.y);
     gl_Position = vec4(pos2 / 3072.0, 0.0, 1.0);
 }
 ";
@@ -287,11 +287,11 @@ impl<'a> GlRenderer<'a> {
         gl.tex_image_2d(
             glow::TEXTURE_2D,
             0,
-            glow::RGBA as i32,
+            glow::BGRA as i32,
             width as i32,
             height as i32,
             0,
-            glow::RGBA,
+            glow::BGRA,
             glow::UNSIGNED_BYTE,
             data,
         );
