@@ -392,9 +392,11 @@ impl Model {
             return Err(io::ErrorKind::InvalidData.into());
         }
 
-        let length = read_be_u32(&mut reader)?;
-        let json = read_vec(&mut reader, length)?;
-        let puppet = serde_json::from_slice(&json).unwrap();
+        let puppet = {
+            let length = read_be_u32(&mut reader)?;
+            let json = read_vec(&mut reader, length)?;
+            serde_json::from_slice(&json).unwrap()
+        };
 
         let magic = read_array::<R, 8>(&mut reader)?;
         if magic != TEX {
