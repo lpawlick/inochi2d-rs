@@ -404,7 +404,7 @@ impl Model {
         }
 
         let num_textures = read_be_u32(&mut reader)?;
-        let mut textures = Vec::new();
+        let mut textures = Vec::with_capacity(num_textures as usize);
         for _ in 0..num_textures {
             let length = read_be_u32(&mut reader)?;
             let format = read_array::<R, 1>(&mut reader)?[0];

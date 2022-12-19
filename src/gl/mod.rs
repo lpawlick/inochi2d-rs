@@ -571,7 +571,7 @@ fn decode_textures_parallel(textures: &mut Vec<Texture>) -> mpsc::Receiver<(usiz
     }
 
     let (tx2, rx2) = mpsc::channel();
-    let mut pipes = Vec::new();
+    let mut pipes = Vec::with_capacity(num_threads);
     for _ in 0..num_threads {
         let (tx, rx) = mpsc::channel::<(usize, Texture)>();
         let tx2 = tx2.clone();
