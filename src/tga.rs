@@ -1,3 +1,9 @@
+unsafe fn copy_intersperce(dst: *mut u8, src: *const u8) -> *mut u8 {
+    dst.copy_from(src, 3);
+    dst.offset(3).write(255);
+    dst.offset(4)
+}
+
 // This function decodes to RGBA instead of RGB, by interspercing a 255 byte every three bytes.
 fn decode_rle_24(mut rle: &[u8], mut ptr: *mut u8) {
     while rle.len() > 18 {
@@ -8,22 +14,14 @@ fn decode_rle_24(mut rle: &[u8], mut ptr: *mut u8) {
             let pixel = &rle[..3];
             rle = &rle[3..];
             for _ in 0..c {
-                unsafe {
-                    ptr.copy_from(pixel.as_ptr(), 3);
-                    ptr.offset(3).write(255);
-                    ptr = ptr.offset(4);
-                }
+                ptr = unsafe { copy_intersperce(ptr, pixel.as_ptr()) };
             }
         } else {
             let c = c + 1;
             for _ in 0..c {
                 let pixel = &rle[..3];
                 rle = &rle[3..];
-                unsafe {
-                    ptr.copy_from(pixel.as_ptr(), 3);
-                    ptr.offset(3).write(255);
-                    ptr = ptr.offset(4);
-                }
+                ptr = unsafe { copy_intersperce(ptr, pixel.as_ptr()) };
             }
         }
     }
