@@ -360,6 +360,12 @@ impl Texture {
     }
 }
 
+fn read_u8<R: io::Read>(reader: &mut R) -> io::Result<u8> {
+    let mut buf = [0u8; 1];
+    reader.read_exact(&mut buf)?;
+    Ok(buf[0])
+}
+
 fn read_be_u32<R: io::Read>(reader: &mut R) -> io::Result<u32> {
     let mut buf = [0u8; 4];
     reader.read_exact(&mut buf)?;
@@ -408,7 +414,7 @@ impl Model {
         let mut textures = Vec::with_capacity(num_textures as usize);
         for _ in 0..num_textures {
             let length = read_be_u32(&mut reader)?;
-            let format = read_array::<R, 1>(&mut reader)?[0];
+            let format = read_u8(&mut reader)?;
             let data = read_vec(&mut reader, length)?;
             let texture = match format {
                 0 => Texture::Png(data),
