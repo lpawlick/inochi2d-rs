@@ -277,22 +277,26 @@ pub struct Puppet {
 }
 
 #[derive(Debug)]
-pub enum Texture {
+pub enum CompressedTexture {
     Png(Vec<u8>),
     Tga(Vec<u8>),
     Bc7(Vec<u8>),
-    Decoded {
+}
+
+#[derive(Debug)]
+pub enum Texture {
+    Rgba {
         width: u32,
         height: u32,
         data: Vec<u8>,
     },
 }
 
-impl Texture {
-    pub fn decode(&mut self) {
+impl CompressedTexture {
+    pub fn decode(&self) -> Texture {
         use image::ImageDecoder;
         let (data, color_type, width, height) = match self {
-            Texture::Png(data) => {
+            CompressedTexture::Png(data) => {
                 let cursor = io::Cursor::new(data);
                 let decoder = image::codecs::png::PngDecoder::new(cursor).unwrap();
                 let (width, height) = decoder.dimensions();
@@ -301,18 +305,15 @@ impl Texture {
                 decoder.read_image(&mut data).unwrap();
                 (data, color_type, width, height)
             }
-            Texture::Tga(data) => {
+            CompressedTexture::Tga(data) => {
                 let (width, height, data) = tga::decode(data);
-                *self = Texture::Decoded {
+                return Texture::Rgba {
                     width,
                     height,
                     data,
                 };
-                return;
             }
-            Texture::Bc7(data) => todo!("BC7 is still unimplemented"),
-            // Nothing to do!
-            Texture::Decoded { .. } => return,
+            CompressedTexture::Bc7(data) => todo!("BC7 is still unimplemented"),
         };
         let data = match color_type {
             image::ColorType::Rgba8 => data,
@@ -324,16 +325,18 @@ impl Texture {
             }
             _ => panic!("Unknown color type {color_type:?}"),
         };
-        *self = Texture::Decoded {
+        Texture::Rgba {
             width,
             height,
             data,
-        };
+        }
     }
+}
 
-    pub fn encode(&mut self, format: image::ImageFormat) {
+impl Texture {
+    pub fn encode(&self, format: image::ImageFormat) -> CompressedTexture {
         match self {
-            Texture::Decoded {
+            Texture::Rgba {
                 width,
                 height,
                 data,
@@ -349,13 +352,12 @@ impl Texture {
                     format,
                 )
                 .unwrap();
-                *self = match format {
-                    image::ImageFormat::Png => Texture::Png(buf.into_inner()),
-                    image::ImageFormat::Tga => Texture::Tga(buf.into_inner()),
+                match format {
+                    image::ImageFormat::Png => CompressedTexture::Png(buf.into_inner()),
+                    image::ImageFormat::Tga => CompressedTexture::Tga(buf.into_inner()),
                     _ => panic!("Unsupported format {format:?}"),
                 }
             }
-            _ => panic!("Unsupported image: {self:?}"),
         }
     }
 }
@@ -389,7 +391,7 @@ fn read_vec<R: io::Read>(reader: &mut R, length: u32) -> io::Result<Vec<u8>> {
 #[derive(Debug)]
 pub struct Model {
     pub puppet: Puppet,
-    pub textures: Vec<Texture>,
+    pub textures: Vec<CompressedTexture>,
 }
 
 impl Model {
@@ -417,9 +419,9 @@ impl Model {
             let format = read_u8(&mut reader)?;
             let data = read_vec(&mut reader, length)?;
             let texture = match format {
-                0 => Texture::Png(data),
-                1 => Texture::Tga(data),
-                2 => Texture::Bc7(data),
+                0 => CompressedTexture::Png(data),
+                1 => CompressedTexture::Tga(data),
+                2 => CompressedTexture::Bc7(data),
                 _ => panic!("Unknown format {format}"),
             };
             textures.push(texture);
@@ -437,10 +439,9 @@ impl Model {
         writer.write_all(&(self.textures.len() as u32).to_be_bytes())?;
         for texture in self.textures.iter() {
             let (format, data) = match texture {
-                Texture::Png(data) => (0u8, data),
-                Texture::Tga(data) => (1u8, data),
-                Texture::Bc7(data) => (2u8, data),
-                Texture::Decoded { .. } => todo!("Automated encoding of textures unsupported."),
+                CompressedTexture::Png(data) => (0u8, data),
+                CompressedTexture::Tga(data) => (1u8, data),
+                CompressedTexture::Bc7(data) => (2u8, data),
             };
             writer.write_all(&(data.len() as u32).to_be_bytes())?;
             writer.write_all(&[format])?;

@@ -7,4 +7,6 @@ pub mod gl;
 mod parser;
 mod tga;
 
-pub use parser::{BlendMode, Mask, Meta, Model, Node, Puppet, Texture, Transform};
+pub use parser::{
+    BlendMode, CompressedTexture, Mask, Meta, Model, Node, Puppet, Texture, Transform,
+};

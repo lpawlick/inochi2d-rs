@@ -1,4 +1,4 @@
-use crate::{BlendMode, Mask, Model, Node, Texture, Transform};
+use crate::{BlendMode, CompressedTexture, Mask, Model, Node, Texture, Transform};
 use glfw::{Action, Context, Key};
 use glow::HasContext;
 use std::cell::RefCell;
@@ -300,12 +300,11 @@ impl<'a> GlRenderer<'a> {
 
     fn load_texture(gl: &glow::Context, tex: &Texture) -> glow::NativeTexture {
         match tex {
-            Texture::Decoded {
+            Texture::Rgba {
                 width,
                 height,
                 data,
             } => unsafe { Self::upload_texture(gl, *width, *height, Some(data)) },
-            _ => todo!("Unsupported image format: {tex:?}"),
         }
     }
 
@@ -561,7 +560,7 @@ fn sort_nodes_by_zsort(node: &Node) -> Vec<u32> {
 }
 
 #[cfg(feature = "parallel")]
-fn decode_textures(textures: &mut Vec<Texture>) -> mpsc::Receiver<(usize, Texture)> {
+fn decode_textures(textures: &mut Vec<CompressedTexture>) -> mpsc::Receiver<(usize, Texture)> {
     let mut num_threads = std::thread::available_parallelism().unwrap().get();
     if num_threads > 1 {
         num_threads -= 1;
@@ -573,13 +572,13 @@ fn decode_textures(textures: &mut Vec<Texture>) -> mpsc::Receiver<(usize, Textur
     let (tx2, rx2) = mpsc::channel();
     let mut pipes = Vec::with_capacity(num_threads);
     for _ in 0..num_threads {
-        let (tx, rx) = mpsc::channel::<(usize, Texture)>();
+        let (tx, rx) = mpsc::channel::<(usize, CompressedTexture)>();
         let tx2 = tx2.clone();
         std::thread::Builder::new()
             .name(String::from("Texture Decoder"))
             .spawn(move || {
-                while let Ok((i, mut tex)) = rx.recv() {
-                    tex.decode();
+                while let Ok((i, tex)) = rx.recv() {
+                    let tex = tex.decode();
                     tx2.send((i, tex)).unwrap();
                 }
             })
@@ -595,10 +594,10 @@ fn decode_textures(textures: &mut Vec<Texture>) -> mpsc::Receiver<(usize, Textur
 }
 
 #[cfg(not(feature = "parallel"))]
-fn decode_textures(textures: &mut Vec<Texture>) -> mpsc::Receiver<(usize, Texture)> {
+fn decode_textures(textures: &mut Vec<CompressedTexture>) -> mpsc::Receiver<(usize, Texture)> {
     let (tx, rx) = mpsc::channel();
-    for (i, mut tex) in textures.drain(..).enumerate() {
-        tex.decode();
+    for (i, tex) in textures.drain(..).enumerate() {
+        let tex = tex.decode();
         tx.send((i, tex)).unwrap();
     }
     rx
