@@ -295,7 +295,6 @@ impl<'a> GlRenderer<'a> {
             glow::UNSIGNED_BYTE,
             data,
         );
-        gl.generate_mipmap(glow::TEXTURE_2D);
         texture
     }
 
