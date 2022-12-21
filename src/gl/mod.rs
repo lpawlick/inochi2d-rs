@@ -561,7 +561,8 @@ fn sort_nodes_by_zsort(node: &Node) -> Vec<u32> {
     sort_uuids_by_zsort(uuids)
 }
 
-fn decode_textures_parallel(textures: &mut Vec<Texture>) -> mpsc::Receiver<(usize, Texture)> {
+#[cfg(feature = "parallel")]
+fn decode_textures(textures: &mut Vec<Texture>) -> mpsc::Receiver<(usize, Texture)> {
     let mut num_threads = std::thread::available_parallelism().unwrap().get();
     if num_threads > 1 {
         num_threads -= 1;
@@ -594,6 +595,16 @@ fn decode_textures_parallel(textures: &mut Vec<Texture>) -> mpsc::Receiver<(usiz
     rx2
 }
 
+#[cfg(not(feature = "parallel"))]
+fn decode_textures(textures: &mut Vec<Texture>) -> mpsc::Receiver<(usize, Texture)> {
+    let (tx, rx) = mpsc::channel();
+    for (i, mut tex) in textures.drain(..).enumerate() {
+        tex.decode();
+        tx.send((i, tex)).unwrap();
+    }
+    rx
+}
+
 fn upload_textures(
     gl: &glow::Context,
     rx: mpsc::Receiver<(usize, Texture)>,
@@ -610,7 +621,7 @@ fn upload_textures(
 pub fn render(model: &mut Model) {
     // We start decoding textures on threads…
     let num_textures = model.textures.len();
-    let rx = decode_textures_parallel(&mut model.textures);
+    let rx = decode_textures(&mut model.textures);
 
     let mut glfw = glfw::init(glfw::LOG_ERRORS).unwrap();
     glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::OpenGlEs));
