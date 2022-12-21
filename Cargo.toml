@@ -1,6 +1,6 @@
 [package]
 name = "inochi2d"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Emmanuel Gil Peyrot <linkmauve@linkmauve.fr>"]
 description = "Pure Rust implementation of Inochi2D, the realtime 2D puppet animation framework"

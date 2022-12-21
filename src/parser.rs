@@ -1,6 +1,6 @@
+use crate::tga;
 use serde::{Deserialize, Serialize};
 use std::io;
-use crate::tga;
 
 const MAGIC: &[u8] = b"TRNSRTS\0";
 const TEX: &[u8] = b"TEX_SECT";

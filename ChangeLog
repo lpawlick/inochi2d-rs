@@ -1,0 +1,17 @@
+Version 0.1.1:
+2022-12-21  Emmanuel Gil Peyrot <linkmauve@linkmauve.fr>
+    * Visible changes:
+        - Add a serialiser, so we can write files back, for instance using
+        another texture format.
+        - Decoding textures is now much faster, thanks to using our own
+        homebrew TGA decoding, parallelised on threads.
+    * Internal changes:
+        - Remove the nom dependency, instead parse manually using Read.
+        - Improve GL renderer internals.
+        - Split out VBO and program handling into their own modules.
+        - Disable mipmap generation for now, as it would slow things down
+        tremendously on mobile.
+
+Version 0.1.0:
+2022-11-16  Emmanuel Gil Peyrot <linkmauve@linkmauve.fr>
+    * Initial release
