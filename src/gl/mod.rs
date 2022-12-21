@@ -101,10 +101,7 @@ struct GlRenderer<'a> {
 }
 
 impl<'a> GlRenderer<'a> {
-    fn new(
-        gl: &'a glow::Context,
-        textures: Vec<glow::NativeTexture>,
-    ) -> Result<GlRenderer, String> {
+    fn new(gl: &'a glow::Context) -> Result<GlRenderer, String> {
         let part_program = Program::builder(&gl)?
             .shader(glow::VERTEX_SHADER, VERTEX)?
             .shader(glow::FRAGMENT_SHADER, FRAGMENT)?
@@ -168,7 +165,7 @@ impl<'a> GlRenderer<'a> {
             deform,
             ibo,
             locations,
-            textures,
+            textures: Vec::new(),
             part_program,
             composite_program,
             composite_texture,
@@ -298,14 +295,23 @@ impl<'a> GlRenderer<'a> {
         texture
     }
 
-    fn load_texture(gl: &glow::Context, tex: &Texture) -> glow::NativeTexture {
+    fn load_texture(&self, tex: &Texture) -> glow::NativeTexture {
         match tex {
             Texture::Rgba {
                 width,
                 height,
                 data,
-            } => unsafe { Self::upload_texture(gl, *width, *height, Some(data)) },
+            } => unsafe { Self::upload_texture(self.gl, *width, *height, Some(data)) },
         }
+    }
+
+    fn upload_textures(&mut self, rx: mpsc::Receiver<(usize, Texture)>, num_textures: usize) {
+        let mut vec = vec![None; num_textures];
+        while let Ok((i, tex)) = rx.recv() {
+            let texture = self.load_texture(&tex);
+            vec[i] = Some(texture);
+        }
+        self.textures = vec.into_iter().map(Option::unwrap).collect();
     }
 
     fn upload_buffers(&mut self) {
@@ -603,19 +609,6 @@ fn decode_textures(textures: &mut Vec<CompressedTexture>) -> mpsc::Receiver<(usi
     rx
 }
 
-fn upload_textures(
-    gl: &glow::Context,
-    rx: mpsc::Receiver<(usize, Texture)>,
-    num_textures: usize,
-) -> Vec<glow::NativeTexture> {
-    let mut vec = vec![None; num_textures];
-    while let Ok((i, tex)) = rx.recv() {
-        let texture = GlRenderer::load_texture(gl, &tex);
-        vec[i] = Some(texture);
-    }
-    vec.into_iter().map(Option::unwrap).collect()
-}
-
 pub fn render(model: &mut Model) {
     // We start decoding textures on threads…
     let num_textures = model.textures.len();
@@ -635,12 +628,12 @@ pub fn render(model: &mut Model) {
     let gl =
         unsafe { glow::Context::from_loader_function(|s| window.get_proc_address(s) as *const _) };
 
-    // … So that here hopefully some have already been decoded, while we were setting up GLES.
-    let textures = upload_textures(&gl, rx, num_textures);
-
-    let mut renderer = GlRenderer::new(&gl, textures).unwrap();
+    let mut renderer = GlRenderer::new(&gl).unwrap();
     renderer.flatten_nodes(&model.puppet.nodes, None);
     renderer.upload_buffers();
+
+    // … So that here hopefully some have already been decoded, while we were setting up GLES.
+    renderer.upload_textures(rx, num_textures);
 
     let order = sort_nodes_by_zsort(&model.puppet.nodes);
     while !window.should_close() {
