@@ -362,8 +362,7 @@ impl<'a> GlRenderer<'a> {
         if *prev == Some(program.program) {
             return;
         }
-        let gl = &self.gl;
-        gl.use_program(Some(program.program));
+        program.use_();
         *prev = Some(program.program);
     }
 

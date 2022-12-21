@@ -3,7 +3,6 @@ use glow::HasContext;
 pub struct ProgramBuilder<'a> {
     gl: &'a glow::Context,
     program: glow::NativeProgram,
-    shaders: Vec<(u32, &'static str)>,
 }
 
 pub struct Program<'a> {
@@ -14,11 +13,7 @@ pub struct Program<'a> {
 impl<'a> Program<'a> {
     pub fn builder(gl: &'a glow::Context) -> Result<ProgramBuilder<'a>, String> {
         let program = unsafe { gl.create_program()? };
-        Ok(ProgramBuilder {
-            gl,
-            program,
-            shaders: Vec::new(),
-        })
+        Ok(ProgramBuilder { gl, program })
     }
 
     pub fn use_(&self) {
