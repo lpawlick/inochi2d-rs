@@ -431,12 +431,17 @@ pub struct Puppet {
 pub enum CompressedTexture {
     Png(Vec<u8>),
     Tga(Vec<u8>),
-    Bc7(Vec<u8>),
+    ZstdBc7(Vec<u8>),
 }
 
 #[derive(Debug)]
 pub enum Texture {
     Rgba {
+        width: u32,
+        height: u32,
+        data: Vec<u8>,
+    },
+    Bc7 {
         width: u32,
         height: u32,
         data: Vec<u8>,
@@ -483,7 +488,17 @@ impl CompressedTexture {
                     data,
                 }
             }
-            CompressedTexture::Bc7(_) => todo!("BC7 is still unimplemented"),
+            CompressedTexture::ZstdBc7(data) => {
+                let width = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
+                let height = u32::from_be_bytes([data[4], data[5], data[6], data[7]]);
+                let len = (width * height) as usize;
+                let data = zstd::bulk::decompress(&data[8..], len).unwrap();
+                Texture::Bc7 {
+                    width,
+                    height,
+                    data,
+                }
+            }
         }
     }
 }
@@ -514,6 +529,7 @@ impl Texture {
                     _ => panic!("Unsupported format {format:?}"),
                 }
             }
+            Texture::Bc7 { .. } => todo!("BC7 compression isn’t implemented yet"),
         }
     }
 }
@@ -579,7 +595,7 @@ impl Model {
             let texture = match format {
                 0 => CompressedTexture::Png(data),
                 1 => CompressedTexture::Tga(data),
-                2 => CompressedTexture::Bc7(data),
+                2 => CompressedTexture::ZstdBc7(data),
                 _ => panic!("Unknown format {format}"),
             };
             textures.push(texture);
@@ -599,7 +615,7 @@ impl Model {
             let (format, data) = match texture {
                 CompressedTexture::Png(data) => (0u8, data),
                 CompressedTexture::Tga(data) => (1u8, data),
-                CompressedTexture::Bc7(data) => (2u8, data),
+                CompressedTexture::ZstdBc7(data) => (2u8, data),
             };
             writer.write_all(&(data.len() as u32).to_be_bytes())?;
             writer.write_all(&[format])?;

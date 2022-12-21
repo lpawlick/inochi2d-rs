@@ -65,6 +65,36 @@ impl<'a> Texture<'a> {
         Ok(Texture { gl, texture })
     }
 
+    pub fn from_compressed_data(
+        gl: &'a glow::Context,
+        width: u32,
+        height: u32,
+        data: &[u8],
+    ) -> Result<Texture<'a>, String> {
+        let texture = gl.create_texture().unwrap();
+        gl.bind_texture(glow::TEXTURE_2D, Some(&texture));
+        gl.tex_parameteri(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_MIN_FILTER,
+            glow::LINEAR as i32,
+        );
+        gl.tex_parameteri(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_MAG_FILTER,
+            glow::LINEAR as i32,
+        );
+        gl.compressed_tex_image_2d_with_u8_array(
+            glow::TEXTURE_2D,
+            0,
+            glow::COMPRESSED_RGBA_BPTC_UNORM,
+            width as i32,
+            height as i32,
+            0,
+            data,
+        );
+        Ok(Texture { gl, texture })
+    }
+
     pub fn bind(&self) {
         let gl = self.gl;
         gl.bind_texture(glow::TEXTURE_2D, Some(&self.texture));

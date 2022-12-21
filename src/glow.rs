@@ -56,6 +56,9 @@ pub const COLOR_BUFFER_BIT: u32 = 0x00004000;
 #[cfg(feature = "debug")]
 pub const DEBUG_SOURCE_APPLICATION: u32 = 0x824A;
 
+// GL_EXT_texture_compression_bptc
+pub const COMPRESSED_RGBA_BPTC_UNORM: u32 = 0x8E8C;
+
 #[cfg(target_arch = "wasm32")]
 pub type NativeProgram = web_sys::WebGlProgram;
 #[cfg(target_arch = "wasm32")]
@@ -128,6 +131,16 @@ extern "C" {
         format: u32,
         type_: u32,
         pixels: *const u8,
+    );
+    fn glCompressedTexImage2D(
+        target: u32,
+        level: i32,
+        internalformat: u32,
+        width: i32,
+        height: i32,
+        border: i32,
+        image_size: i32,
+        data: *const u8,
     );
     fn glTexParameteri(target: u32, pname: u32, param: i32);
     fn glGenFramebuffers(n: i32, out: *mut u32);
@@ -316,6 +329,32 @@ impl Context {
             )
         };
         Ok(())
+    }
+
+    pub fn compressed_tex_image_2d_with_u8_array(
+        &self,
+        target: u32,
+        level: i32,
+        internalformat: u32,
+        width: i32,
+        height: i32,
+        border: i32,
+        pixels: &[u8],
+    ) {
+        let image_size = pixels.len() as i32;
+        let pixels = pixels.as_ptr();
+        unsafe {
+            glCompressedTexImage2D(
+                target,
+                level,
+                internalformat,
+                width,
+                height,
+                border,
+                image_size,
+                pixels,
+            )
+        };
     }
 
     pub fn tex_parameteri(&self, target: u32, pname: u32, param: i32) {

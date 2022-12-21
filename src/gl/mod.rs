@@ -280,6 +280,11 @@ impl<'a> GlRenderer<'a> {
                 height,
                 data,
             } => GlTexture::from_data(self.gl, *width, *height, Some(data)),
+            Texture::Bc7 {
+                width,
+                height,
+                data,
+            } => GlTexture::from_compressed_data(self.gl, *width, *height, data),
         }
     }
 
