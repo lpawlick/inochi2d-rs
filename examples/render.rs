@@ -6,14 +6,24 @@ fn print_info(meta: &inochi2d::Meta) {
         println!("Model {name}");
     }
     println!("Version {}", meta.version);
-    println!("Rigger {}", meta.rigger);
-    println!("Artist {}", meta.artist);
+    if let Some(ref rigger) = meta.rigger {
+        println!("Rigger {rigger}");
+    }
+    if let Some(ref artist) = meta.artist {
+        println!("Artist {artist}");
+    }
     if let Some(ref rights) = meta.rights {
         println!("Rights {rights}");
     }
-    println!("Copyright {}", meta.copyright);
-    println!("License {}", meta.license_url);
-    println!("Contact {}", meta.contact);
+    if let Some(ref copyright) = meta.copyright {
+        println!("Copyright {copyright}");
+    }
+    if let Some(ref license_url) = meta.license_url {
+        println!("License {license_url}");
+    }
+    if let Some(ref contact) = meta.contact {
+        println!("Contact {contact}");
+    }
     if let Some(ref reference) = meta.reference {
         println!("Reference {reference}");
     }

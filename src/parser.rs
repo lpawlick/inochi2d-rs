@@ -10,13 +10,13 @@ const TEX: &[u8] = b"TEX_SECT";
 pub struct Meta {
     pub name: Option<String>,
     pub version: String,
-    pub rigger: String,
-    pub artist: String,
+    pub rigger: Option<String>,
+    pub artist: Option<String>,
     pub rights: Option<String>,
-    pub copyright: String,
+    pub copyright: Option<String>,
     #[serde(rename = "licenseURL")]
-    pub license_url: String,
-    pub contact: String,
+    pub license_url: Option<String>,
+    pub contact: Option<String>,
     pub reference: Option<String>,
     thumbnail_id: u32,
     preserve_pixels: bool,
