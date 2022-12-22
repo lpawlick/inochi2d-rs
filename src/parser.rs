@@ -203,6 +203,14 @@ pub enum Binding {
         is_set: Vec<Vec<bool>>,
         interpolate_mode: InterpolateMode,
     },
+    #[serde(rename = "transform.t.z")]
+    TransformTZ {
+        node: u32,
+        values: Vec<Vec<f32>>,
+        #[serde(rename = "isSet")]
+        is_set: Vec<Vec<bool>>,
+        interpolate_mode: InterpolateMode,
+    },
     #[serde(rename = "transform.s.x")]
     TransformSX {
         node: u32,
