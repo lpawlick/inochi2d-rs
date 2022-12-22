@@ -176,9 +176,14 @@ impl<'a> GlRenderer<'a> {
     fn flatten_nodes(&mut self, node: &Node, parent: Option<u32>) {
         match *node {
             Node::Node {
-                uuid, ref children, ..
+                uuid,
+                ref transform,
+                ref children,
+                ..
             } => {
-                self.push(uuid, EnumNode::Node);
+                let transform = transform.clone();
+                let simple_node = SimpleNode { parent, transform };
+                self.push(uuid, EnumNode::Node(simple_node));
                 for child in children.iter() {
                     self.flatten_nodes(child, Some(uuid));
                 }
@@ -467,7 +472,7 @@ impl<'a> GlRenderer<'a> {
                     self.render_composite(composite);
                     gl.pop_debug_group();
                 },
-                EnumNode::Node => (),
+                EnumNode::Node(_) => (),
                 EnumNode::SimplePhysics => (),
             }
         }
@@ -489,10 +494,15 @@ struct Composite {
     name: String,
 }
 
+struct SimpleNode {
+    transform: Transform,
+    parent: Option<u32>,
+}
+
 enum EnumNode {
     Part(Part),
     Composite(Composite),
-    Node,
+    Node(SimpleNode),
     SimplePhysics,
 }
 
@@ -517,6 +527,13 @@ impl Part {
             let (parent, parent_trans) = match parent_node {
                 EnumNode::Part(node) => (node.parent, node.transform.trans),
                 EnumNode::Composite(node) => (node.parent, node.transform.trans),
+                EnumNode::Node(node) => (
+                    match node.parent {
+                        Some(parent) => parent,
+                        None => break,
+                    },
+                    node.transform.trans,
+                ),
                 _ => break,
             };
             trans[0] += parent_trans[0];
