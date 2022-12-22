@@ -174,6 +174,9 @@ impl<'a> GlRenderer<'a> {
     }
 
     fn flatten_nodes(&mut self, node: &Node, parent: Option<u32>) {
+        if !node.enabled() {
+            return;
+        }
         match *node {
             Node::Node {
                 uuid,
@@ -561,6 +564,9 @@ fn collect_children_uuids(node: &Node) -> Vec<u32> {
 }
 
 fn recurse(node: &Node, zsort: f32) -> Vec<(u32, f32)> {
+    if !node.enabled() {
+        return Vec::new();
+    }
     let zsort = zsort + node.zsort();
     let mut vec = vec![(node.uuid(), zsort)];
     if let Node::Node { children, .. } | Node::Part { children, .. } = node {

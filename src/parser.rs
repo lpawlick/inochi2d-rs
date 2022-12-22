@@ -160,6 +160,15 @@ impl Node {
         }
     }
 
+    pub fn enabled(&self) -> bool {
+        match *self {
+            Node::Node { enabled, .. }
+            | Node::Part { enabled, .. }
+            | Node::Composite { enabled, .. }
+            | Node::SimplePhysics { enabled, .. } => enabled,
+        }
+    }
+
     pub fn zsort(&self) -> f32 {
         match *self {
             Node::Node { zsort, .. }
