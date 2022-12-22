@@ -578,7 +578,7 @@ fn recurse(node: &Node, zsort: f32) -> Vec<(u32, f32)> {
 }
 
 fn sort_uuids_by_zsort(mut uuids: Vec<(u32, f32)>) -> Vec<u32> {
-    uuids.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap().reverse());
+    uuids.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
     uuids.into_iter().map(|(uuid, zsort)| uuid).collect()
 }
 
