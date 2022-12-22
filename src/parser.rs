@@ -172,6 +172,7 @@ impl Node {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub enum InterpolateMode {
+    Nearest,
     Linear,
 }
 
