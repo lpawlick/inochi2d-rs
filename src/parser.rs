@@ -294,46 +294,51 @@ pub enum Texture {
 
 impl CompressedTexture {
     pub fn decode(&self) -> Texture {
-        use image::ImageDecoder;
-        let (data, color_type, width, height) = match self {
+        match self {
+            #[cfg(not(feature = "png"))]
+            CompressedTexture::Png(_) => {
+                panic!("PNG textures are unsupported without the png feature")
+            }
+            #[cfg(feature = "png")]
             CompressedTexture::Png(data) => {
+                use image::ImageDecoder;
                 let cursor = io::Cursor::new(data);
                 let decoder = image::codecs::png::PngDecoder::new(cursor).unwrap();
                 let (width, height) = decoder.dimensions();
                 let mut data = vec![0u8; decoder.total_bytes() as usize];
                 let color_type = decoder.color_type();
                 decoder.read_image(&mut data).unwrap();
-                (data, color_type, width, height)
-            }
-            CompressedTexture::Tga(data) => {
-                let (width, height, data) = tga::decode(data);
-                return Texture::Rgba {
+                let data = match color_type {
+                    image::ColorType::Rgba8 => data,
+                    image::ColorType::Rgb8 => {
+                        let rgb = image::ImageBuffer::from_raw(width, height, data).unwrap();
+                        let dynamic = image::DynamicImage::ImageRgb8(rgb);
+                        let rgba = dynamic.into_rgba8();
+                        rgba.into_vec()
+                    }
+                    _ => panic!("Unknown color type {color_type:?}"),
+                };
+                Texture::Rgba {
                     width,
                     height,
                     data,
-                };
+                }
             }
-            CompressedTexture::Bc7(data) => todo!("BC7 is still unimplemented"),
-        };
-        let data = match color_type {
-            image::ColorType::Rgba8 => data,
-            image::ColorType::Rgb8 => {
-                let rgb = image::ImageBuffer::from_raw(width, height, data).unwrap();
-                let dynamic = image::DynamicImage::ImageRgb8(rgb);
-                let rgba = dynamic.into_rgba8();
-                rgba.into_vec()
+            CompressedTexture::Tga(data) => {
+                let (width, height, data) = tga::decode(data);
+                Texture::Rgba {
+                    width,
+                    height,
+                    data,
+                }
             }
-            _ => panic!("Unknown color type {color_type:?}"),
-        };
-        Texture::Rgba {
-            width,
-            height,
-            data,
+            CompressedTexture::Bc7(_) => todo!("BC7 is still unimplemented"),
         }
     }
 }
 
 impl Texture {
+    #[cfg(feature = "encoding")]
     pub fn encode(&self, format: image::ImageFormat) -> CompressedTexture {
         match self {
             Texture::Rgba {
