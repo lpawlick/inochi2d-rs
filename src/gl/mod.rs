@@ -114,12 +114,9 @@ impl<'a> GlRenderer<'a> {
             .shader(glow::FRAGMENT_SHADER, FRAGMENT_PASSTHROUGH)?
             .link()?;
 
-        let verts = Vbo::from(
-            gl,
-            vec![-1., -1., -1., 1., 1., -1., 1., -1., -1., 1., 1., 1.],
-        );
-        let uvs = Vbo::from(gl, vec![0., 0., 0., 1., 1., 0., 1., 0., 0., 1., 1., 1.]);
-        let deform = Vbo::from(gl, vec![0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]);
+        let verts = Vbo::from(gl, vec![-1., -1., -1., 1., 1., -1., 1., 1.]);
+        let uvs = Vbo::from(gl, vec![0., 0., 0., 1., 1., 0., 1., 1.]);
+        let deform = Vbo::from(gl, vec![0., 0., 0., 0., 0., 0., 0., 0.]);
         let ibo = Vbo::new(gl);
 
         let composite_texture;
@@ -159,7 +156,7 @@ impl<'a> GlRenderer<'a> {
             gl,
             nodes,
             mutable,
-            current_ibo_offset: 6,
+            current_ibo_offset: 4,
             verts,
             uvs,
             deform,
@@ -457,7 +454,7 @@ impl<'a> GlRenderer<'a> {
         self.bind_texture(self.composite_texture);
         self.set_blend_mode(composite.blend_mode);
         self.use_program(&self.composite_program);
-        gl.draw_arrays(glow::TRIANGLES, 0, 6);
+        gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
     }
 
     fn render_nodes(&self, order: &[u32]) {
