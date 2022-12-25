@@ -121,27 +121,25 @@ impl<'a> GlRenderer<'a> {
 
         let composite_texture;
         let composite_fbo;
-        unsafe {
-            gl.clear_color(0.0, 0.0, 0.0, 0.0);
-            gl.enable(glow::BLEND);
-            gl.stencil_mask(0xff);
+        gl.clear_color(0.0, 0.0, 0.0, 0.0);
+        gl.enable(glow::BLEND);
+        gl.stencil_mask(0xff);
 
-            composite_texture = Self::upload_texture(&gl, SIZE, SIZE, None);
-            composite_fbo = gl.create_framebuffer().unwrap();
-            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(composite_fbo));
-            gl.framebuffer_texture_2d(
-                glow::FRAMEBUFFER,
-                glow::COLOR_ATTACHMENT0,
-                glow::TEXTURE_2D,
-                Some(composite_texture),
-                0,
-            );
-            assert_eq!(
-                gl.check_framebuffer_status(glow::FRAMEBUFFER),
-                glow::FRAMEBUFFER_COMPLETE
-            );
-            gl.bind_framebuffer(glow::FRAMEBUFFER, None);
-        };
+        composite_texture = Self::upload_texture(&gl, SIZE, SIZE, None);
+        composite_fbo = gl.create_framebuffer().unwrap();
+        gl.bind_framebuffer(glow::FRAMEBUFFER, Some(composite_fbo));
+        gl.framebuffer_texture_2d(
+            glow::FRAMEBUFFER,
+            glow::COLOR_ATTACHMENT0,
+            glow::TEXTURE_2D,
+            Some(composite_texture),
+            0,
+        );
+        assert_eq!(
+            gl.check_framebuffer_status(glow::FRAMEBUFFER),
+            glow::FRAMEBUFFER_COMPLETE
+        );
+        gl.bind_framebuffer(glow::FRAMEBUFFER, None);
 
         let mutable = RefCell::new(MutableStuff {
             prev_program: None,
@@ -270,7 +268,7 @@ impl<'a> GlRenderer<'a> {
         }
     }
 
-    unsafe fn upload_texture(
+    fn upload_texture(
         gl: &glow::Context,
         width: u32,
         height: u32,
@@ -308,7 +306,7 @@ impl<'a> GlRenderer<'a> {
                 width,
                 height,
                 data,
-            } => unsafe { Self::upload_texture(self.gl, *width, *height, Some(data)) },
+            } => Self::upload_texture(self.gl, *width, *height, Some(data)),
         }
     }
 
@@ -324,22 +322,20 @@ impl<'a> GlRenderer<'a> {
     fn upload_buffers(&mut self) {
         let gl = &self.gl;
 
-        unsafe {
-            self.verts.upload(glow::ARRAY_BUFFER, glow::STATIC_DRAW);
-            gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 8, 0);
-            gl.enable_vertex_attrib_array(0);
+        self.verts.upload(glow::ARRAY_BUFFER, glow::STATIC_DRAW);
+        gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 8, 0);
+        gl.enable_vertex_attrib_array(0);
 
-            self.uvs.upload(glow::ARRAY_BUFFER, glow::STATIC_DRAW);
-            gl.vertex_attrib_pointer_f32(1, 2, glow::FLOAT, false, 8, 0);
-            gl.enable_vertex_attrib_array(1);
+        self.uvs.upload(glow::ARRAY_BUFFER, glow::STATIC_DRAW);
+        gl.vertex_attrib_pointer_f32(1, 2, glow::FLOAT, false, 8, 0);
+        gl.enable_vertex_attrib_array(1);
 
-            self.deform.upload(glow::ARRAY_BUFFER, glow::DYNAMIC_DRAW);
-            gl.vertex_attrib_pointer_f32(2, 2, glow::FLOAT, false, 8, 0);
-            gl.enable_vertex_attrib_array(2);
+        self.deform.upload(glow::ARRAY_BUFFER, glow::DYNAMIC_DRAW);
+        gl.vertex_attrib_pointer_f32(2, 2, glow::FLOAT, false, 8, 0);
+        gl.enable_vertex_attrib_array(2);
 
-            self.ibo
-                .upload(glow::ELEMENT_ARRAY_BUFFER, glow::STATIC_DRAW);
-        }
+        self.ibo
+            .upload(glow::ELEMENT_ARRAY_BUFFER, glow::STATIC_DRAW);
     }
 
     fn push(&mut self, uuid: u32, buf: EnumNode) {
@@ -350,7 +346,7 @@ impl<'a> GlRenderer<'a> {
         self.nodes.get(&uuid)
     }
 
-    unsafe fn set_stencil(&self, stencil: bool) {
+    fn set_stencil(&self, stencil: bool) {
         let prev = &mut self.mutable.borrow_mut().prev_stencil;
         if *prev == stencil {
             return;
@@ -364,7 +360,7 @@ impl<'a> GlRenderer<'a> {
         *prev = stencil;
     }
 
-    unsafe fn use_program(&self, program: &Program) {
+    fn use_program(&self, program: &Program) {
         let prev = &mut self.mutable.borrow_mut().prev_program;
         if *prev == Some(program.program) {
             return;
@@ -373,7 +369,7 @@ impl<'a> GlRenderer<'a> {
         *prev = Some(program.program);
     }
 
-    unsafe fn bind_texture(&self, texture: glow::NativeTexture) {
+    fn bind_texture(&self, texture: glow::NativeTexture) {
         let prev = &mut self.mutable.borrow_mut().prev_texture;
         if *prev == Some(texture) {
             return;
@@ -383,7 +379,7 @@ impl<'a> GlRenderer<'a> {
         *prev = Some(texture);
     }
 
-    unsafe fn set_blend_mode(&self, mode: BlendMode) {
+    fn set_blend_mode(&self, mode: BlendMode) {
         let prev = &mut self.mutable.borrow_mut().prev_blend_mode;
         if *prev == Some(mode) {
             return;
@@ -400,7 +396,7 @@ impl<'a> GlRenderer<'a> {
         *prev = Some(mode);
     }
 
-    unsafe fn recompute_masks(&self, part: &Part) {
+    fn recompute_masks(&self, part: &Part) {
         if self.mutable.borrow().prev_masks == part.masks {
             return;
         }
@@ -424,7 +420,7 @@ impl<'a> GlRenderer<'a> {
         self.mutable.borrow_mut().prev_masks = part.masks.clone();
     }
 
-    unsafe fn render_part(&self, part: &Part) {
+    fn render_part(&self, part: &Part) {
         self.use_program(&self.part_program);
 
         if !part.masks.is_empty() {
@@ -446,7 +442,7 @@ impl<'a> GlRenderer<'a> {
         );
     }
 
-    unsafe fn render_composite(&self, composite: &Composite) {
+    fn render_composite(&self, composite: &Composite) {
         let gl = &self.gl;
         gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.composite_fbo));
         gl.clear(glow::COLOR_BUFFER_BIT);
@@ -464,21 +460,21 @@ impl<'a> GlRenderer<'a> {
         let gl = self.gl;
         for &uuid in order {
             match self.get(uuid).unwrap() {
-                EnumNode::Part(part) => unsafe {
+                EnumNode::Part(part) => {
                     #[cfg(feature = "debug")]
                     gl.push_debug_group(glow::DEBUG_SOURCE_APPLICATION, 0, &part.name);
                     self.set_stencil(false);
                     self.render_part(part);
                     #[cfg(feature = "debug")]
                     gl.pop_debug_group();
-                },
-                EnumNode::Composite(composite) => unsafe {
+                }
+                EnumNode::Composite(composite) => {
                     #[cfg(feature = "debug")]
                     gl.push_debug_group(glow::DEBUG_SOURCE_APPLICATION, 0, &composite.name);
                     self.render_composite(composite);
                     #[cfg(feature = "debug")]
                     gl.pop_debug_group();
-                },
+                }
                 EnumNode::Node(_) => (),
                 EnumNode::SimplePhysics => (),
             }
@@ -487,9 +483,7 @@ impl<'a> GlRenderer<'a> {
 
     fn clear(&self) {
         let gl = &self.gl;
-        unsafe {
-            gl.clear(glow::COLOR_BUFFER_BIT);
-        }
+        gl.clear(glow::COLOR_BUFFER_BIT);
     }
 }
 

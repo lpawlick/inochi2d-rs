@@ -35,14 +35,16 @@ impl<'a, T: Copy> Vbo<'a, T> {
         }
     }
 
-    pub unsafe fn upload(&mut self, target: u32, usage: u32) {
+    pub fn upload(&mut self, target: u32, usage: u32) {
         match self {
             Vbo::Buffering(gl, vec) => {
                 let slice = &vec;
-                let bytes: &[u8] = core::slice::from_raw_parts(
-                    slice.as_ptr() as *const u8,
-                    slice.len() * core::mem::size_of::<T>(),
-                );
+                let bytes: &[u8] = unsafe {
+                    core::slice::from_raw_parts(
+                        slice.as_ptr() as *const u8,
+                        slice.len() * core::mem::size_of::<T>(),
+                    )
+                };
                 let vbo = gl.create_buffer().unwrap();
                 gl.bind_buffer(target, Some(vbo));
                 gl.buffer_data_u8_slice(target, bytes, usage);
