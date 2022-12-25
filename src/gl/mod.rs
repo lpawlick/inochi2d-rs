@@ -199,6 +199,7 @@ impl<'a> GlRenderer<'a> {
                 textures,
                 ref masks,
                 ref children,
+                #[cfg(feature = "debug")]
                 ref name,
                 ..
             } => {
@@ -222,7 +223,6 @@ impl<'a> GlRenderer<'a> {
                 let parent = parent.unwrap();
                 let transform = transform.clone();
                 let masks = masks.clone();
-                let name = name.clone();
 
                 let part = Part {
                     start_indice,
@@ -233,7 +233,8 @@ impl<'a> GlRenderer<'a> {
                     textures,
                     parent,
                     masks,
-                    name,
+                    #[cfg(feature = "debug")]
+                    name: name.clone(),
                 };
                 self.push(uuid, EnumNode::Part(part));
                 for child in children.iter() {
@@ -245,20 +246,21 @@ impl<'a> GlRenderer<'a> {
                 ref transform,
                 blend_mode,
                 ref children,
+                #[cfg(feature = "debug")]
                 ref name,
                 ..
             } => {
                 let parent = parent.unwrap();
                 let transform = transform.clone();
                 let children_uuid = children.iter().flat_map(collect_children_uuids).collect();
-                let name = name.clone();
 
                 let composite = Composite {
                     transform,
                     blend_mode,
                     parent,
                     children: children_uuid,
-                    name,
+                    #[cfg(feature = "debug")]
+                    name: name.clone(),
                 };
                 self.push(uuid, EnumNode::Composite(composite));
                 for child in children.iter() {
@@ -458,18 +460,23 @@ impl<'a> GlRenderer<'a> {
     }
 
     fn render_nodes(&self, order: &[u32]) {
+        #[cfg(feature = "debug")]
         let gl = self.gl;
         for &uuid in order {
             match self.get(uuid).unwrap() {
                 EnumNode::Part(part) => unsafe {
+                    #[cfg(feature = "debug")]
                     gl.push_debug_group(glow::DEBUG_SOURCE_APPLICATION, 0, &part.name);
                     self.set_stencil(false);
                     self.render_part(part);
+                    #[cfg(feature = "debug")]
                     gl.pop_debug_group();
                 },
                 EnumNode::Composite(composite) => unsafe {
+                    #[cfg(feature = "debug")]
                     gl.push_debug_group(glow::DEBUG_SOURCE_APPLICATION, 0, &composite.name);
                     self.render_composite(composite);
+                    #[cfg(feature = "debug")]
                     gl.pop_debug_group();
                 },
                 EnumNode::Node(_) => (),
@@ -491,6 +498,7 @@ struct Composite {
     blend_mode: BlendMode,
     parent: u32,
     children: Vec<u32>,
+    #[cfg(feature = "debug")]
     name: String,
 }
 
@@ -516,6 +524,7 @@ struct Part {
     blend_mode: BlendMode,
     parent: u32,
     masks: Vec<Mask>,
+    #[cfg(feature = "debug")]
     name: String,
 }
 
