@@ -127,12 +127,12 @@ impl<'a> GlRenderer<'a> {
 
         composite_texture = Self::upload_texture(&gl, SIZE, SIZE, None);
         composite_fbo = gl.create_framebuffer().unwrap();
-        gl.bind_framebuffer(glow::FRAMEBUFFER, Some(composite_fbo));
+        gl.bind_framebuffer(glow::FRAMEBUFFER, Some(&composite_fbo));
         gl.framebuffer_texture_2d(
             glow::FRAMEBUFFER,
             glow::COLOR_ATTACHMENT0,
             glow::TEXTURE_2D,
-            Some(composite_texture),
+            Some(&composite_texture),
             0,
         );
         assert_eq!(
@@ -275,18 +275,18 @@ impl<'a> GlRenderer<'a> {
         data: Option<&[u8]>,
     ) -> glow::NativeTexture {
         let texture = gl.create_texture().unwrap();
-        gl.bind_texture(glow::TEXTURE_2D, Some(texture));
-        gl.tex_parameter_i32(
+        gl.bind_texture(glow::TEXTURE_2D, Some(&texture));
+        gl.tex_parameteri(
             glow::TEXTURE_2D,
             glow::TEXTURE_MIN_FILTER,
             glow::LINEAR as i32,
         );
-        gl.tex_parameter_i32(
+        gl.tex_parameteri(
             glow::TEXTURE_2D,
             glow::TEXTURE_MAG_FILTER,
             glow::LINEAR as i32,
         );
-        gl.tex_image_2d(
+        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
             glow::TEXTURE_2D,
             0,
             glow::RGBA as i32,
@@ -296,7 +296,8 @@ impl<'a> GlRenderer<'a> {
             glow::RGBA,
             glow::UNSIGNED_BYTE,
             data,
-        );
+        )
+        .unwrap();
         texture
     }
 
@@ -323,15 +324,15 @@ impl<'a> GlRenderer<'a> {
         let gl = &self.gl;
 
         self.verts.upload(glow::ARRAY_BUFFER, glow::STATIC_DRAW);
-        gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 8, 0);
+        gl.vertex_attrib_pointer_with_i32(0, 2, glow::FLOAT, false, 8, 0);
         gl.enable_vertex_attrib_array(0);
 
         self.uvs.upload(glow::ARRAY_BUFFER, glow::STATIC_DRAW);
-        gl.vertex_attrib_pointer_f32(1, 2, glow::FLOAT, false, 8, 0);
+        gl.vertex_attrib_pointer_with_i32(1, 2, glow::FLOAT, false, 8, 0);
         gl.enable_vertex_attrib_array(1);
 
         self.deform.upload(glow::ARRAY_BUFFER, glow::DYNAMIC_DRAW);
-        gl.vertex_attrib_pointer_f32(2, 2, glow::FLOAT, false, 8, 0);
+        gl.vertex_attrib_pointer_with_i32(2, 2, glow::FLOAT, false, 8, 0);
         gl.enable_vertex_attrib_array(2);
 
         self.ibo
@@ -362,21 +363,21 @@ impl<'a> GlRenderer<'a> {
 
     fn use_program(&self, program: &Program) {
         let prev = &mut self.mutable.borrow_mut().prev_program;
-        if *prev == Some(program.program) {
+        if *prev == Some(program.program.clone()) {
             return;
         }
         program.use_();
-        *prev = Some(program.program);
+        *prev = Some(program.program.clone());
     }
 
-    fn bind_texture(&self, texture: glow::NativeTexture) {
+    fn bind_texture(&self, texture: &glow::NativeTexture) {
         let prev = &mut self.mutable.borrow_mut().prev_texture;
-        if *prev == Some(texture) {
+        if *prev == Some(texture.clone()) {
             return;
         }
         let gl = &self.gl;
         gl.bind_texture(glow::TEXTURE_2D, Some(texture));
-        *prev = Some(texture);
+        *prev = Some(texture.clone());
     }
 
     fn set_blend_mode(&self, mode: BlendMode) {
@@ -430,11 +431,11 @@ impl<'a> GlRenderer<'a> {
         let trans = part.trans(self);
 
         let gl = &self.gl;
-        self.bind_texture(self.textures[part.textures[0]]);
+        self.bind_texture(&self.textures[part.textures[0]]);
         self.set_blend_mode(part.blend_mode);
-        gl.uniform_2_f32(self.locations.trans.as_ref(), trans[0], trans[1]);
+        gl.uniform2f(self.locations.trans.as_ref(), trans[0], trans[1]);
 
-        gl.draw_elements(
+        gl.draw_elements_with_i32(
             glow::TRIANGLES,
             part.num_indices as i32,
             glow::UNSIGNED_SHORT,
@@ -444,12 +445,12 @@ impl<'a> GlRenderer<'a> {
 
     fn render_composite(&self, composite: &Composite) {
         let gl = &self.gl;
-        gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.composite_fbo));
+        gl.bind_framebuffer(glow::FRAMEBUFFER, Some(&self.composite_fbo));
         gl.clear(glow::COLOR_BUFFER_BIT);
         self.render_nodes(&composite.children);
 
         gl.bind_framebuffer(glow::FRAMEBUFFER, None);
-        self.bind_texture(self.composite_texture);
+        self.bind_texture(&self.composite_texture);
         self.set_blend_mode(composite.blend_mode);
         self.use_program(&self.composite_program);
         gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);

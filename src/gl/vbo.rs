@@ -46,8 +46,8 @@ impl<'a, T: Copy> Vbo<'a, T> {
                     )
                 };
                 let vbo = gl.create_buffer().unwrap();
-                gl.bind_buffer(target, Some(vbo));
-                gl.buffer_data_u8_slice(target, bytes, usage);
+                gl.bind_buffer(target, Some(&vbo));
+                gl.buffer_data_with_u8_array(target, bytes, usage);
                 *self = Vbo::Uploaded(vbo);
             }
             _ => panic!("Vbo must not be uploaded yet!"),

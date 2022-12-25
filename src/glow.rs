@@ -168,7 +168,7 @@ impl Context {
         unsafe { glEnableVertexAttribArray(index) };
     }
 
-    pub fn vertex_attrib_pointer_f32(
+    pub fn vertex_attrib_pointer_with_i32(
         &self,
         index: u32,
         size: i32,
@@ -186,7 +186,7 @@ impl Context {
         NonZeroU32::new(buf).map(|buf| NativeBuffer(buf))
     }
 
-    pub fn bind_buffer(&self, target: u32, buffer: Option<NativeBuffer>) {
+    pub fn bind_buffer(&self, target: u32, buffer: Option<&NativeBuffer>) {
         let buffer = match buffer {
             None => 0,
             Some(NativeBuffer(buffer)) => buffer.get(),
@@ -194,7 +194,7 @@ impl Context {
         unsafe { glBindBuffer(target, buffer) };
     }
 
-    pub fn buffer_data_u8_slice(&self, target: u32, bytes: &[u8], usage: u32) {
+    pub fn buffer_data_with_u8_array(&self, target: u32, bytes: &[u8], usage: u32) {
         let size = bytes.len() as isize;
         let data = bytes.as_ptr();
         unsafe { glBufferData(target, size, data, usage) };
@@ -204,7 +204,7 @@ impl Context {
         unsafe { glDrawArrays(mode, first, count) };
     }
 
-    pub fn draw_elements(&self, mode: u32, count: i32, type_: u32, indices: i32) {
+    pub fn draw_elements_with_i32(&self, mode: u32, count: i32, type_: u32, indices: i32) {
         unsafe { glDrawElements(mode, count, type_, indices) };
     }
 
@@ -214,7 +214,7 @@ impl Context {
         NonZeroU32::new(tex).map(|tex| NativeTexture(tex))
     }
 
-    pub fn bind_texture(&self, target: u32, texture: Option<NativeTexture>) {
+    pub fn bind_texture(&self, target: u32, texture: Option<&NativeTexture>) {
         let texture = match texture {
             None => 0,
             Some(NativeTexture(texture)) => texture.get(),
@@ -222,7 +222,7 @@ impl Context {
         unsafe { glBindTexture(target, texture) };
     }
 
-    pub fn tex_image_2d(
+    pub fn tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
         &self,
         target: u32,
         level: i32,
@@ -233,7 +233,7 @@ impl Context {
         format: u32,
         type_: u32,
         pixels: Option<&[u8]>,
-    ) {
+    ) -> Result<(), ()> {
         let pixels = match pixels {
             None => null(),
             Some(pixels) => pixels.as_ptr(),
@@ -251,9 +251,10 @@ impl Context {
                 pixels,
             )
         };
+        Ok(())
     }
 
-    pub fn tex_parameter_i32(&self, target: u32, pname: u32, param: i32) {
+    pub fn tex_parameteri(&self, target: u32, pname: u32, param: i32) {
         unsafe { glTexParameteri(target, pname, param) };
     }
 
@@ -263,7 +264,7 @@ impl Context {
         NonZeroU32::new(fbo).map(|fbo| NativeFramebuffer(fbo))
     }
 
-    pub fn bind_framebuffer(&self, target: u32, fbo: Option<NativeFramebuffer>) {
+    pub fn bind_framebuffer(&self, target: u32, fbo: Option<&NativeFramebuffer>) {
         let fbo = match fbo {
             None => 0,
             Some(NativeFramebuffer(fbo)) => fbo.get(),
@@ -276,7 +277,7 @@ impl Context {
         target: u32,
         attachment: u32,
         textarget: u32,
-        texture: Option<NativeTexture>,
+        texture: Option<&NativeTexture>,
         level: i32,
     ) {
         let texture = match texture {
@@ -295,14 +296,14 @@ impl Context {
         NonZeroU32::new(shader).map(|shader| NativeShader(shader))
     }
 
-    pub fn shader_source(&self, shader: NativeShader, source: &str) {
+    pub fn shader_source(&self, shader: &NativeShader, source: &str) {
         let count = 1;
         let length = source.len() as i32;
         let string = source.as_ptr();
         unsafe { glShaderSource(shader.0.get(), count, &string, &length) };
     }
 
-    pub fn compile_shader(&self, shader: NativeShader) {
+    pub fn compile_shader(&self, shader: &NativeShader) {
         unsafe { glCompileShader(shader.0.get()) };
     }
 
@@ -312,20 +313,24 @@ impl Context {
         status == 0
     }
 
-    pub fn get_shader_info_log(&self, shader: NativeShader) -> String {
+    pub fn get_shader_info_log(&self, shader: &NativeShader) -> Option<String> {
         let mut length = 0i32;
         unsafe { glGetShaderiv(shader.0.get(), INFO_LOG_LENGTH, &mut length) };
         if length > 0 {
             let mut log = String::with_capacity(length as usize);
             unsafe { glGetShaderInfoLog(shader.0.get(), length, &mut length, log.as_mut_ptr()) };
-            log
+            Some(log)
         } else {
-            String::new()
+            None
         }
     }
 
-    pub fn delete_shader(&self, shader: NativeShader) {
-        unsafe { glDeleteShader(shader.0.get()) };
+    pub fn delete_shader(&self, shader: Option<&NativeShader>) {
+        let shader = match shader {
+            None => 0,
+            Some(NativeShader(shader)) => shader.get(),
+        };
+        unsafe { glDeleteShader(shader) };
     }
 
     pub fn create_program(&self) -> Option<NativeProgram> {
@@ -333,33 +338,33 @@ impl Context {
         NonZeroU32::new(program).map(|program| NativeProgram(program))
     }
 
-    pub fn attach_shader(&self, program: NativeProgram, shader: NativeShader) {
+    pub fn attach_shader(&self, program: &NativeProgram, shader: &NativeShader) {
         unsafe { glAttachShader(program.0.get(), shader.0.get()) };
     }
 
-    pub fn link_program(&self, program: NativeProgram) {
+    pub fn link_program(&self, program: &NativeProgram) {
         unsafe { glLinkProgram(program.0.get()) };
     }
 
-    pub fn get_program_link_status(&self, program: NativeProgram) -> bool {
+    pub fn get_program_link_status(&self, program: &NativeProgram) -> bool {
         let mut status = 0i32;
         unsafe { glGetShaderiv(program.0.get(), LINK_STATUS, &mut status) };
         status == 0
     }
 
-    pub fn get_program_info_log(&self, program: NativeProgram) -> String {
+    pub fn get_program_info_log(&self, program: &NativeProgram) -> Option<String> {
         let mut length = 0i32;
         unsafe { glGetProgramiv(program.0.get(), INFO_LOG_LENGTH, &mut length) };
         if length > 0 {
             let mut log = String::with_capacity(length as usize);
             unsafe { glGetProgramInfoLog(program.0.get(), length, &mut length, log.as_mut_ptr()) };
-            log
+            Some(log)
         } else {
-            String::new()
+            None
         }
     }
 
-    pub fn use_program(&self, program: Option<NativeProgram>) {
+    pub fn use_program(&self, program: Option<&NativeProgram>) {
         let program = match program {
             None => 0,
             Some(NativeProgram(program)) => program.get(),
@@ -367,13 +372,17 @@ impl Context {
         unsafe { glUseProgram(program) };
     }
 
-    pub fn delete_program(&self, program: NativeProgram) {
-        unsafe { glDeleteProgram(program.0.get()) };
+    pub fn delete_program(&self, program: Option<&NativeProgram>) {
+        let program = match program {
+            None => 0,
+            Some(NativeProgram(program)) => program.get(),
+        };
+        unsafe { glDeleteProgram(program) };
     }
 
     pub fn get_uniform_location(
         &self,
-        program: NativeProgram,
+        program: &NativeProgram,
         name: &str,
     ) -> Option<NativeUniformLocation> {
         let name = CString::new(name).unwrap();
@@ -381,7 +390,7 @@ impl Context {
         NonZeroI32::new(location).map(|location| NativeUniformLocation(location))
     }
 
-    pub fn uniform_2_f32(&self, location: Option<&NativeUniformLocation>, v0: f32, v1: f32) {
+    pub fn uniform2f(&self, location: Option<&NativeUniformLocation>, v0: f32, v1: f32) {
         let location = match location {
             None => 0,
             Some(NativeUniformLocation(location)) => location.get(),
