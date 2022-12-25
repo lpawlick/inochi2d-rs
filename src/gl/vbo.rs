@@ -1,4 +1,4 @@
-use glow::HasContext;
+use crate::glow;
 
 pub enum Vbo<'a, T: Copy> {
     Buffering(&'a glow::Context, Vec<T>),

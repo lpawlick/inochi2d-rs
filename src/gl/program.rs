@@ -1,4 +1,4 @@
-use glow::HasContext;
+use crate::glow;
 
 pub struct ProgramBuilder<'a> {
     gl: &'a glow::Context,
@@ -12,7 +12,7 @@ pub struct Program<'a> {
 
 impl<'a> Program<'a> {
     pub fn builder(gl: &'a glow::Context) -> Result<ProgramBuilder<'a>, String> {
-        let program = unsafe { gl.create_program()? };
+        let program = unsafe { gl.create_program().unwrap() };
         Ok(ProgramBuilder { gl, program })
     }
 
@@ -38,7 +38,7 @@ impl<'a> ProgramBuilder<'a> {
     pub fn shader(self, foo: u32, data: &'static str) -> Result<ProgramBuilder<'a>, String> {
         let gl = self.gl;
         unsafe {
-            let shader = gl.create_shader(foo)?;
+            let shader = gl.create_shader(foo).unwrap();
             gl.shader_source(shader, data);
             gl.compile_shader(shader);
             if !gl.get_shader_compile_status(shader) {

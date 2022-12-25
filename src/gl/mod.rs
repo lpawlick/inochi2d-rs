@@ -1,6 +1,6 @@
+use crate::glow;
 use crate::{BlendMode, CompressedTexture, Mask, Model, Node, Texture, Transform};
 use glfw::{Action, Context, Key};
-use glow::HasContext;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::mpsc;
@@ -653,8 +653,7 @@ pub fn render(model: &mut Model) {
         .unwrap();
     window.make_current();
     window.set_key_polling(true);
-    let gl =
-        unsafe { glow::Context::from_loader_function(|s| window.get_proc_address(s) as *const _) };
+    let gl = glow::Context::new();
 
     let mut renderer = GlRenderer::new(&gl).unwrap();
     renderer.flatten_nodes(&model.puppet.nodes, None);
