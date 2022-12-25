@@ -39,7 +39,7 @@ void main() {
     if (color.a < 0.05) {
         discard;
     }
-    gl_FragColor = color;
+    gl_FragColor = color.bgra;
 }
 ";
 
@@ -291,11 +291,11 @@ impl<'a> GlRenderer<'a> {
         gl.tex_image_2d(
             glow::TEXTURE_2D,
             0,
-            glow::BGRA as i32,
+            glow::RGBA as i32,
             width as i32,
             height as i32,
             0,
-            glow::BGRA,
+            glow::RGBA,
             glow::UNSIGNED_BYTE,
             data,
         );
