@@ -102,14 +102,14 @@ struct GlRenderer<'a> {
 
 impl<'a> GlRenderer<'a> {
     fn new(gl: &'a glow::Context) -> Result<GlRenderer, String> {
-        let part_program = Program::builder(&gl)?
+        let part_program = Program::builder(gl)?
             .shader(glow::VERTEX_SHADER, VERTEX)?
             .shader(glow::FRAGMENT_SHADER, FRAGMENT)?
             .link()?;
         let mut locations = Locations::new();
         locations.trans = part_program.get_uniform_location("trans");
 
-        let composite_program = Program::builder(&gl)?
+        let composite_program = Program::builder(gl)?
             .shader(glow::VERTEX_SHADER, VERTEX_PASSTHROUGH)?
             .shader(glow::FRAGMENT_SHADER, FRAGMENT_PASSTHROUGH)?
             .link()?;
@@ -119,14 +119,12 @@ impl<'a> GlRenderer<'a> {
         let deform = Vbo::from(gl, vec![0., 0., 0., 0., 0., 0., 0., 0.]);
         let ibo = Vbo::new(gl);
 
-        let composite_texture;
-        let composite_fbo;
         gl.clear_color(0.0, 0.0, 0.0, 0.0);
         gl.enable(glow::BLEND);
         gl.stencil_mask(0xff);
 
-        composite_texture = Self::upload_texture(&gl, SIZE, SIZE, None);
-        composite_fbo = gl.create_framebuffer().unwrap();
+        let composite_texture = Self::upload_texture(gl, SIZE, SIZE, None);
+        let composite_fbo = gl.create_framebuffer().unwrap();
         gl.bind_framebuffer(glow::FRAMEBUFFER, Some(&composite_fbo));
         gl.framebuffer_texture_2d(
             glow::FRAMEBUFFER,

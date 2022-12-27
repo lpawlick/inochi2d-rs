@@ -35,9 +35,9 @@ impl<'a> Drop for Program<'a> {
 }
 
 impl<'a> ProgramBuilder<'a> {
-    pub fn shader(self, foo: u32, data: &'static str) -> Result<ProgramBuilder<'a>, String> {
+    pub fn shader(self, type_: u32, data: &'static str) -> Result<ProgramBuilder<'a>, String> {
         let gl = self.gl;
-        let shader = gl.create_shader(foo).unwrap();
+        let shader = gl.create_shader(type_).unwrap();
         gl.shader_source(&shader, data);
         gl.compile_shader(&shader);
         if !gl.get_shader_parameter(&shader, glow::COMPILE_STATUS) {

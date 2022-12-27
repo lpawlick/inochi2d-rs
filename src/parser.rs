@@ -468,7 +468,7 @@ impl Model {
             };
             writer.write_all(&(data.len() as u32).to_be_bytes())?;
             writer.write_all(&[format])?;
-            writer.write_all(&data)?;
+            writer.write_all(data)?;
         }
         Ok(())
     }
