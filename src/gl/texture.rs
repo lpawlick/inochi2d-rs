@@ -67,6 +67,7 @@ impl<'a> Texture<'a> {
 
     pub fn from_compressed_data(
         gl: &'a glow::Context,
+        internalformat: u32,
         width: u32,
         height: u32,
         data: &[u8],
@@ -86,7 +87,7 @@ impl<'a> Texture<'a> {
         gl.compressed_tex_image_2d_with_u8_array(
             glow::TEXTURE_2D,
             0,
-            glow::COMPRESSED_RGBA_BPTC_UNORM,
+            internalformat,
             width as i32,
             height as i32,
             0,

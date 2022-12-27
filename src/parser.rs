@@ -432,6 +432,7 @@ pub enum CompressedTexture {
     Png(Vec<u8>),
     Tga(Vec<u8>),
     ZstdBc7(Vec<u8>),
+    ZstdAstc(Vec<u8>),
 }
 
 #[derive(Debug)]
@@ -444,6 +445,13 @@ pub enum Texture {
     Bc7 {
         width: u32,
         height: u32,
+        data: Vec<u8>,
+    },
+    Astc {
+        width: u32,
+        height: u32,
+        block_width: u8,
+        block_height: u8,
         data: Vec<u8>,
     },
 }
@@ -499,6 +507,26 @@ impl CompressedTexture {
                     data,
                 }
             }
+            CompressedTexture::ZstdAstc(data) => {
+                assert_eq!(&data[..4], b"\x13\xab\xa1\x5c");
+                let block_width = data[4];
+                let block_height = data[5];
+                let block_depth = data[6];
+                assert_eq!(block_depth, 1);
+                let width = u32::from_le_bytes([data[7], data[8], data[9], 0]);
+                let height = u32::from_le_bytes([data[10], data[11], data[12], 0]);
+                let depth = u32::from_le_bytes([data[13], data[14], data[15], 0]);
+                assert_eq!(depth, 1);
+                let len = (width * height) as usize;
+                let data = zstd::bulk::decompress(&data[16..], len).unwrap();
+                Texture::Astc {
+                    width,
+                    height,
+                    block_width,
+                    block_height,
+                    data,
+                }
+            }
         }
     }
 }
@@ -530,6 +558,7 @@ impl Texture {
                 }
             }
             Texture::Bc7 { .. } => todo!("BC7 compression isn’t implemented yet"),
+            Texture::Astc { .. } => todo!("ASTC compression isn’t implemented yet"),
         }
     }
 }
@@ -596,6 +625,7 @@ impl Model {
                 0 => CompressedTexture::Png(data),
                 1 => CompressedTexture::Tga(data),
                 2 => CompressedTexture::ZstdBc7(data),
+                3 => CompressedTexture::ZstdAstc(data),
                 _ => panic!("Unknown format {format}"),
             };
             textures.push(texture);
@@ -616,6 +646,7 @@ impl Model {
                 CompressedTexture::Png(data) => (0u8, data),
                 CompressedTexture::Tga(data) => (1u8, data),
                 CompressedTexture::ZstdBc7(data) => (2u8, data),
+                CompressedTexture::ZstdAstc(data) => (3u8, data),
             };
             writer.write_all(&(data.len() as u32).to_be_bytes())?;
             writer.write_all(&[format])?;

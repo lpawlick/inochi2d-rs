@@ -59,6 +59,22 @@ pub const DEBUG_SOURCE_APPLICATION: u32 = 0x824A;
 // GL_EXT_texture_compression_bptc
 pub const COMPRESSED_RGBA_BPTC_UNORM: u32 = 0x8E8C;
 
+// GL_KHR_texture_compression_astc_hdr
+pub const COMPRESSED_RGBA_ASTC_4X4: u32 = 0x93B0;
+pub const COMPRESSED_RGBA_ASTC_5X4: u32 = 0x93B1;
+pub const COMPRESSED_RGBA_ASTC_5X5: u32 = 0x93B2;
+pub const COMPRESSED_RGBA_ASTC_6X5: u32 = 0x93B3;
+pub const COMPRESSED_RGBA_ASTC_6X6: u32 = 0x93B4;
+pub const COMPRESSED_RGBA_ASTC_8X5: u32 = 0x93B5;
+pub const COMPRESSED_RGBA_ASTC_8X6: u32 = 0x93B6;
+pub const COMPRESSED_RGBA_ASTC_8X8: u32 = 0x93B7;
+pub const COMPRESSED_RGBA_ASTC_10X5: u32 = 0x93B8;
+pub const COMPRESSED_RGBA_ASTC_10X6: u32 = 0x93B9;
+pub const COMPRESSED_RGBA_ASTC_10X8: u32 = 0x93BA;
+pub const COMPRESSED_RGBA_ASTC_10X10: u32 = 0x93BB;
+pub const COMPRESSED_RGBA_ASTC_12X10: u32 = 0x93BC;
+pub const COMPRESSED_RGBA_ASTC_12X12: u32 = 0x93BD;
+
 #[cfg(target_arch = "wasm32")]
 pub type NativeProgram = web_sys::WebGlProgram;
 #[cfg(target_arch = "wasm32")]

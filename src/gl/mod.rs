@@ -284,7 +284,42 @@ impl<'a> GlRenderer<'a> {
                 width,
                 height,
                 data,
-            } => GlTexture::from_compressed_data(self.gl, *width, *height, data),
+            } => GlTexture::from_compressed_data(
+                self.gl,
+                glow::COMPRESSED_RGBA_BPTC_UNORM,
+                *width,
+                *height,
+                data,
+            ),
+            Texture::Astc {
+                width,
+                height,
+                block_width,
+                block_height,
+                data,
+            } => GlTexture::from_compressed_data(
+                self.gl,
+                match (block_width, block_height) {
+                    (4, 4) => glow::COMPRESSED_RGBA_ASTC_4X4,
+                    (5, 4) => glow::COMPRESSED_RGBA_ASTC_5X4,
+                    (5, 5) => glow::COMPRESSED_RGBA_ASTC_5X5,
+                    (6, 5) => glow::COMPRESSED_RGBA_ASTC_6X5,
+                    (6, 6) => glow::COMPRESSED_RGBA_ASTC_6X6,
+                    (8, 5) => glow::COMPRESSED_RGBA_ASTC_8X5,
+                    (8, 6) => glow::COMPRESSED_RGBA_ASTC_8X6,
+                    (8, 8) => glow::COMPRESSED_RGBA_ASTC_8X8,
+                    (10, 5) => glow::COMPRESSED_RGBA_ASTC_10X5,
+                    (10, 6) => glow::COMPRESSED_RGBA_ASTC_10X6,
+                    (10, 8) => glow::COMPRESSED_RGBA_ASTC_10X8,
+                    (10, 10) => glow::COMPRESSED_RGBA_ASTC_10X10,
+                    (12, 10) => glow::COMPRESSED_RGBA_ASTC_12X10,
+                    (12, 12) => glow::COMPRESSED_RGBA_ASTC_12X12,
+                    _ => unreachable!(),
+                },
+                *width,
+                *height,
+                data,
+            ),
         }
     }
 
