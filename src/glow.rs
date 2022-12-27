@@ -43,16 +43,16 @@ pub const COLOR_BUFFER_BIT: u32 = 0x00004000;
 #[cfg(feature = "debug")]
 pub const DEBUG_SOURCE_APPLICATION: u32 = 0x824A;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct NativeProgram(NonZeroU32);
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct NativeShader(NonZeroU32);
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct NativeTexture(NonZeroU32);
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct NativeBuffer(NonZeroU32);
 pub struct NativeUniformLocation(NonZeroI32);
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct NativeFramebuffer(NonZeroU32);
 
 #[link(name = "GLESv2")]
