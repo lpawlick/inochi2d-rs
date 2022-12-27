@@ -183,7 +183,7 @@ impl Context {
     pub fn create_buffer(&self) -> Option<NativeBuffer> {
         let mut buf = 0u32;
         unsafe { glGenBuffers(1, &mut buf) };
-        NonZeroU32::new(buf).map(|buf| NativeBuffer(buf))
+        NonZeroU32::new(buf).map(NativeBuffer)
     }
 
     pub fn bind_buffer(&self, target: u32, buffer: Option<&NativeBuffer>) {
@@ -211,7 +211,7 @@ impl Context {
     pub fn create_texture(&self) -> Option<NativeTexture> {
         let mut tex = 0u32;
         unsafe { glGenTextures(1, &mut tex) };
-        NonZeroU32::new(tex).map(|tex| NativeTexture(tex))
+        NonZeroU32::new(tex).map(NativeTexture)
     }
 
     pub fn bind_texture(&self, target: u32, texture: Option<&NativeTexture>) {
@@ -261,7 +261,7 @@ impl Context {
     pub fn create_framebuffer(&self) -> Option<NativeFramebuffer> {
         let mut fbo = 0u32;
         unsafe { glGenFramebuffers(1, &mut fbo) };
-        NonZeroU32::new(fbo).map(|fbo| NativeFramebuffer(fbo))
+        NonZeroU32::new(fbo).map(NativeFramebuffer)
     }
 
     pub fn bind_framebuffer(&self, target: u32, fbo: Option<&NativeFramebuffer>) {
@@ -293,7 +293,7 @@ impl Context {
 
     pub fn create_shader(&self, type_: u32) -> Option<NativeShader> {
         let shader = unsafe { glCreateShader(type_) };
-        NonZeroU32::new(shader).map(|shader| NativeShader(shader))
+        NonZeroU32::new(shader).map(NativeShader)
     }
 
     pub fn shader_source(&self, shader: &NativeShader, source: &str) {
@@ -335,7 +335,7 @@ impl Context {
 
     pub fn create_program(&self) -> Option<NativeProgram> {
         let program = unsafe { glCreateProgram() };
-        NonZeroU32::new(program).map(|program| NativeProgram(program))
+        NonZeroU32::new(program).map(NativeProgram)
     }
 
     pub fn attach_shader(&self, program: &NativeProgram, shader: &NativeShader) {
@@ -387,7 +387,7 @@ impl Context {
     ) -> Option<NativeUniformLocation> {
         let name = CString::new(name).unwrap();
         let location = unsafe { glGetUniformLocation(program.0.get(), name.as_ptr() as *const _) };
-        NonZeroI32::new(location).map(|location| NativeUniformLocation(location))
+        NonZeroI32::new(location).map(NativeUniformLocation)
     }
 
     pub fn uniform2f(&self, location: Option<&NativeUniformLocation>, v0: f32, v1: f32) {
