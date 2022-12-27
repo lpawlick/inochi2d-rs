@@ -29,9 +29,9 @@ pub const STATIC_DRAW: u32 = 0x88E4;
 pub const DYNAMIC_DRAW: u32 = 0x88E8;
 pub const FRAGMENT_SHADER: u32 = 0x8B30;
 pub const VERTEX_SHADER: u32 = 0x8B31;
-const INFO_LOG_LENGTH: u32 = 0x8B81;
-const LINK_STATUS: u32 = 0x8B82;
-const COMPILE_STATUS: u32 = 0x8B84;
+pub const COMPILE_STATUS: u32 = 0x8B81;
+pub const LINK_STATUS: u32 = 0x8B82;
+const INFO_LOG_LENGTH: u32 = 0x8B84;
 pub const FRAMEBUFFER_COMPLETE: u32 = 0x8CD5;
 pub const COLOR_ATTACHMENT0: u32 = 0x8CE0;
 pub const FRAMEBUFFER: u32 = 0x8D40;
@@ -307,10 +307,10 @@ impl Context {
         unsafe { glCompileShader(shader.0.get()) };
     }
 
-    pub fn get_shader_compile_status(&self, shader: NativeShader) -> bool {
+    pub fn get_shader_parameter(&self, shader: &NativeShader, pname: u32) -> bool {
         let mut status = 0i32;
-        unsafe { glGetShaderiv(shader.0.get(), COMPILE_STATUS, &mut status) };
-        status == 0
+        unsafe { glGetShaderiv(shader.0.get(), pname, &mut status) };
+        status != 0
     }
 
     pub fn get_shader_info_log(&self, shader: &NativeShader) -> Option<String> {
@@ -346,10 +346,10 @@ impl Context {
         unsafe { glLinkProgram(program.0.get()) };
     }
 
-    pub fn get_program_link_status(&self, program: &NativeProgram) -> bool {
+    pub fn get_program_parameter(&self, program: &NativeProgram, pname: u32) -> bool {
         let mut status = 0i32;
-        unsafe { glGetShaderiv(program.0.get(), LINK_STATUS, &mut status) };
-        status == 0
+        unsafe { glGetProgramiv(program.0.get(), pname, &mut status) };
+        status != 0
     }
 
     pub fn get_program_info_log(&self, program: &NativeProgram) -> Option<String> {

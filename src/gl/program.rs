@@ -40,7 +40,7 @@ impl<'a> ProgramBuilder<'a> {
         let shader = gl.create_shader(foo).unwrap();
         gl.shader_source(&shader, data);
         gl.compile_shader(&shader);
-        if !gl.get_shader_compile_status(shader) {
+        if !gl.get_shader_parameter(&shader, glow::COMPILE_STATUS) {
             return Err(gl.get_shader_info_log(&shader).unwrap());
         }
         gl.attach_shader(&self.program, &shader);
@@ -52,7 +52,7 @@ impl<'a> ProgramBuilder<'a> {
     pub fn link(self) -> Result<Program<'a>, String> {
         let gl = self.gl;
         gl.link_program(&self.program);
-        if !gl.get_program_link_status(&self.program) {
+        if !gl.get_program_parameter(&self.program, glow::LINK_STATUS) {
             return Err(gl.get_program_info_log(&self.program).unwrap());
         }
         Ok(Program {
