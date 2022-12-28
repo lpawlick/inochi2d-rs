@@ -4,8 +4,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-unsafe fn copy_intersperce(dst: *mut u8, src: *const u8) -> *mut u8 {
-    dst.copy_from(src, 3);
+unsafe fn bgr_to_rgba(dst: *mut u8, src: *const u8) -> *mut u8 {
+    let b = src.read();
+    let g = src.offset(1).read();
+    let r = src.offset(2).read();
+    dst.write(r);
+    dst.offset(1).write(g);
+    dst.offset(2).write(b);
     dst.offset(3).write(255);
     dst.offset(4)
 }
@@ -20,14 +25,14 @@ fn decode_rle_24(mut rle: &[u8], mut ptr: *mut u8) {
             let pixel = &rle[..3];
             rle = &rle[3..];
             for _ in 0..c {
-                ptr = unsafe { copy_intersperce(ptr, pixel.as_ptr()) };
+                ptr = unsafe { bgr_to_rgba(ptr, pixel.as_ptr()) };
             }
         } else {
             let c = c + 1;
             for _ in 0..c {
                 let pixel = &rle[..3];
                 rle = &rle[3..];
-                ptr = unsafe { copy_intersperce(ptr, pixel.as_ptr()) };
+                ptr = unsafe { bgr_to_rgba(ptr, pixel.as_ptr()) };
             }
         }
     }
@@ -39,7 +44,7 @@ fn decode_rle_32(mut rle: &[u8], mut ptr: *mut u8) {
         rle = &rle[1..];
         if c & 0x80 != 0 {
             let c = (c & !0x80) + 1;
-            let pixel = &rle[..4];
+            let pixel = &[rle[2], rle[1], rle[0], rle[3]];
             rle = &rle[4..];
             for _ in 0..c {
                 unsafe {
@@ -49,7 +54,10 @@ fn decode_rle_32(mut rle: &[u8], mut ptr: *mut u8) {
             }
         } else {
             let c = c + 1;
-            let pixels = &rle[..4 * c as usize];
+            let pixels: Vec<u8> = rle[..4 * c as usize]
+                .chunks_exact(4)
+                .flat_map(|rle| [rle[2], rle[1], rle[0], rle[3]])
+                .collect();
             rle = &rle[4 * c as usize..];
             unsafe {
                 core::ptr::copy(pixels.as_ptr(), ptr, 4 * c as usize);
