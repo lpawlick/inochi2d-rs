@@ -4,7 +4,7 @@
 //! animation framework.
 
 pub mod gl;
-mod glow;
+pub mod glow;
 mod parser;
 mod tga;
 

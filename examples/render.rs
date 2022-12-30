@@ -1,3 +1,4 @@
+use glfw::{Action, Context, Key};
 use std::fs::File;
 use std::io::BufReader;
 use std::str::FromStr;
@@ -40,6 +41,7 @@ fn main() {
     let file = BufReader::new(file);
     let mut model = inochi2d::Model::parse(file).unwrap();
     print_info(&model.puppet.meta);
+    let textures = model.decode_textures();
 
     let size = if args.len() == 3 {
         args[2].split_once('x').map(|(width, height)| {
@@ -54,5 +56,38 @@ fn main() {
 
     let (width, height) = size.unwrap_or((2048, 2048));
 
-    inochi2d::gl::render(&mut model, width, height);
+    let mut glfw = glfw::init(glfw::LOG_ERRORS).unwrap();
+    glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::OpenGlEs));
+    glfw.window_hint(glfw::WindowHint::ContextVersion(2, 0));
+    glfw.window_hint(glfw::WindowHint::TransparentFramebuffer(true));
+
+    let (mut window, events) = glfw
+        .create_window(width, height, "inochi2d", glfw::WindowMode::Windowed)
+        .unwrap();
+    window.make_current();
+    window.set_key_polling(true);
+    window.set_framebuffer_size_polling(true);
+
+    let gl = inochi2d::glow::Context::new();
+    let mut renderer = inochi2d::gl::setup(&gl, &model.puppet.nodes, textures, width, height);
+
+    while !window.should_close() {
+        renderer.clear();
+        let order = inochi2d::gl::sort_nodes_by_zsort(&model.puppet.nodes);
+        renderer.render_nodes(&order);
+        window.swap_buffers();
+
+        glfw.poll_events();
+        for (_, event) in glfw::flush_messages(&events) {
+            match event {
+                glfw::WindowEvent::FramebufferSize(width, height) => {
+                    renderer.set_size(width, height);
+                }
+                glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
+                    window.set_should_close(true)
+                }
+                _ => {}
+            }
+        }
+    }
 }

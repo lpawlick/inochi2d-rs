@@ -1,6 +1,5 @@
 use crate::glow;
-use crate::{BlendMode, Mask, Model, Node, Texture, TextureReceiver, Transform};
-use glfw::{Action, Context, Key};
+use crate::{BlendMode, Mask, Node, Texture, TextureReceiver, Transform};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
@@ -84,7 +83,7 @@ struct MutableStuff {
     prev_masks: Vec<Mask>,
 }
 
-struct GlRenderer<'a> {
+pub struct GlRenderer<'a> {
     gl: &'a glow::Context,
     nodes: BTreeMap<u32, EnumNode>,
     mutable: RefCell<MutableStuff>,
@@ -171,7 +170,7 @@ impl<'a> GlRenderer<'a> {
         })
     }
 
-    fn set_size(&mut self, width: i32, height: i32) {
+    pub fn set_size(&mut self, width: i32, height: i32) {
         let gl = self.gl;
         gl.viewport(0, 0, width, height);
         gl.uniform1f(self.locations.ratio.as_ref(), height as f32 / width as f32);
@@ -478,7 +477,7 @@ impl<'a> GlRenderer<'a> {
         gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
     }
 
-    fn render_nodes(&self, order: &[u32]) {
+    pub fn render_nodes(&self, order: &[u32]) {
         #[cfg(feature = "debug")]
         let gl = self.gl;
         for &uuid in order {
@@ -504,7 +503,7 @@ impl<'a> GlRenderer<'a> {
         }
     }
 
-    fn clear(&self) {
+    pub fn clear(&self) {
         let gl = &self.gl;
         gl.clear(glow::COLOR_BUFFER_BIT);
     }
@@ -605,49 +604,21 @@ fn sort_uuids_by_zsort(mut uuids: Vec<(u32, f32)>) -> Vec<u32> {
     uuids.into_iter().map(|(uuid, zsort)| uuid).collect()
 }
 
-fn sort_nodes_by_zsort(node: &Node) -> Vec<u32> {
+pub fn sort_nodes_by_zsort(node: &Node) -> Vec<u32> {
     let uuids = recurse(node, 0.);
     sort_uuids_by_zsort(uuids)
 }
 
-pub fn render(model: &mut Model, width: u32, height: u32) {
-    let textures = model.decode_textures();
-
-    let mut glfw = glfw::init(glfw::LOG_ERRORS).unwrap();
-    glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::OpenGlEs));
-    glfw.window_hint(glfw::WindowHint::ContextVersion(2, 0));
-    glfw.window_hint(glfw::WindowHint::TransparentFramebuffer(true));
-
-    let (mut window, events) = glfw
-        .create_window(width, height, "inochi2d", glfw::WindowMode::Windowed)
-        .unwrap();
-    window.make_current();
-    window.set_key_polling(true);
-    window.set_framebuffer_size_polling(true);
-    let gl = glow::Context::new();
-
-    let mut renderer = GlRenderer::new(&gl, width, height).unwrap();
-    renderer.flatten_nodes(&model.puppet.nodes, None);
+pub fn setup<'a>(
+    gl: &'a glow::Context,
+    nodes: &Node,
+    textures: TextureReceiver,
+    width: u32,
+    height: u32,
+) -> GlRenderer<'a> {
+    let mut renderer = GlRenderer::new(gl, width, height).unwrap();
+    renderer.flatten_nodes(nodes, None);
     renderer.upload_buffers();
     renderer.upload_textures(textures);
-
-    let order = sort_nodes_by_zsort(&model.puppet.nodes);
-    while !window.should_close() {
-        renderer.clear();
-        renderer.render_nodes(&order);
-        window.swap_buffers();
-
-        glfw.poll_events();
-        for (_, event) in glfw::flush_messages(&events) {
-            match event {
-                glfw::WindowEvent::FramebufferSize(width, height) => {
-                    renderer.set_size(width, height);
-                }
-                glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                    window.set_should_close(true)
-                }
-                _ => {}
-            }
-        }
-    }
+    renderer
 }
