@@ -307,6 +307,18 @@ impl<'a> GlRenderer<'a> {
             glow::TEXTURE_MAG_FILTER,
             glow::LINEAR as i32,
         );
+        if data.is_none() {
+            gl.tex_parameteri(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_S,
+                glow::CLAMP_TO_EDGE as i32,
+            );
+            gl.tex_parameteri(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_T,
+                glow::CLAMP_TO_EDGE as i32,
+            );
+        }
         gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
             glow::TEXTURE_2D,
             0,
