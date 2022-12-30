@@ -7,5 +7,7 @@ pub mod gl;
 pub mod glow;
 mod parser;
 mod tga;
+#[cfg(target_arch = "wasm32")]
+mod wasm;
 
 pub use parser::{BlendMode, Mask, Meta, Model, Node, Puppet, Texture, TextureReceiver, Transform};

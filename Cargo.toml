@@ -15,10 +15,39 @@ license = "MPL-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-glfw = { version = "0.48", default-features = false }
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.87"
 image = { version = "0.24", default-features = false, optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.glfw]
+version = "0.48"
+default-features = false
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.wasm-bindgen]
+version = "0.2.83"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.js-sys]
+version = "0.3.60"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
+version = "0.3.60"
+default-features = false
+features = [
+    "CssStyleDeclaration",
+    "Document",
+    "Element",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "WebGlBuffer",
+    "WebglCompressedTextureAstc",
+    "WebGlFramebuffer",
+    "WebGlProgram",
+    "WebGlRenderingContext",
+    "WebGlShader",
+    "WebGlTexture",
+    "WebGlUniformLocation",
+    "Window",
+]
 
 [features]
 default = ["parallel"]

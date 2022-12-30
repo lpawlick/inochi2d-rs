@@ -1,5 +1,8 @@
+#[cfg(not(target_arch = "wasm32"))]
 use core::num::{NonZeroI32, NonZeroU32};
+#[cfg(not(target_arch = "wasm32"))]
 use core::ptr::null;
+#[cfg(not(target_arch = "wasm32"))]
 use std::ffi::CString;
 
 pub const ONE: u32 = 1;
@@ -34,6 +37,7 @@ pub const FRAGMENT_SHADER: u32 = 0x8B30;
 pub const VERTEX_SHADER: u32 = 0x8B31;
 pub const COMPILE_STATUS: u32 = 0x8B81;
 pub const LINK_STATUS: u32 = 0x8B82;
+#[cfg(not(target_arch = "wasm32"))]
 const INFO_LOG_LENGTH: u32 = 0x8B84;
 pub const FRAMEBUFFER_COMPLETE: u32 = 0x8CD5;
 pub const COLOR_ATTACHMENT0: u32 = 0x8CE0;
@@ -46,18 +50,38 @@ pub const COLOR_BUFFER_BIT: u32 = 0x00004000;
 #[cfg(feature = "debug")]
 pub const DEBUG_SOURCE_APPLICATION: u32 = 0x824A;
 
+#[cfg(target_arch = "wasm32")]
+pub type NativeProgram = web_sys::WebGlProgram;
+#[cfg(target_arch = "wasm32")]
+pub type NativeTexture = web_sys::WebGlTexture;
+#[cfg(target_arch = "wasm32")]
+pub type NativeBuffer = web_sys::WebGlBuffer;
+#[cfg(target_arch = "wasm32")]
+pub type NativeUniformLocation = web_sys::WebGlUniformLocation;
+#[cfg(target_arch = "wasm32")]
+pub type NativeFramebuffer = web_sys::WebGlFramebuffer;
+#[cfg(target_arch = "wasm32")]
+pub type Context = web_sys::WebGlRenderingContext;
+
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone, PartialEq)]
 pub struct NativeProgram(NonZeroU32);
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone)]
 pub struct NativeShader(NonZeroU32);
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone, PartialEq)]
 pub struct NativeTexture(NonZeroU32);
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone)]
 pub struct NativeBuffer(NonZeroU32);
+#[cfg(not(target_arch = "wasm32"))]
 pub struct NativeUniformLocation(NonZeroI32);
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone)]
 pub struct NativeFramebuffer(NonZeroU32);
 
+#[cfg(not(target_arch = "wasm32"))]
 #[link(name = "GLESv2")]
 extern "C" {
     fn glEnable(cap: u32);
@@ -126,8 +150,10 @@ extern "C" {
     fn glUniform2f(location: i32, v0: f32, v1: f32);
 }
 
+#[cfg(target_os = "linux")]
 pub struct Context;
 
+#[cfg(target_os = "linux")]
 impl Context {
     pub fn new() -> Context {
         Context
