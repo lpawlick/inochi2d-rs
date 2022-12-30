@@ -1,6 +1,7 @@
 use crate::tga;
 use serde::{Deserialize, Serialize};
 use std::io;
+use std::sync::mpsc;
 
 const MAGIC: &[u8] = b"TRNSRTS\0";
 const TEX: &[u8] = b"TEX_SECT";
@@ -411,6 +412,8 @@ fn read_vec<R: io::Read>(reader: &mut R, length: u32) -> io::Result<Vec<u8>> {
     Ok(data)
 }
 
+pub type TextureReceiver = (usize, mpsc::Receiver<(usize, Texture)>);
+
 #[derive(Debug)]
 pub struct Model {
     pub puppet: Puppet,
@@ -471,5 +474,56 @@ impl Model {
             writer.write_all(data)?;
         }
         Ok(())
+    }
+
+    #[cfg(feature = "parallel")]
+    pub fn decode_textures(&mut self) -> TextureReceiver {
+        let num = self.textures.len();
+        let mut num_threads = std::thread::available_parallelism().unwrap().get();
+        if num_threads > 1 {
+            num_threads -= 1;
+        }
+        if num_threads > self.textures.len() {
+            num_threads = self.textures.len();
+        }
+
+        let (tx2, rx2) = mpsc::channel();
+        let mut pipes = Vec::with_capacity(num_threads);
+        for _ in 0..num_threads {
+            let (tx, rx) = mpsc::channel::<(usize, CompressedTexture)>();
+            let tx2 = tx2.clone();
+            std::thread::Builder::new()
+                .name(String::from("Texture Decoder"))
+                .spawn(move || {
+                    while let Ok((i, tex)) = rx.recv() {
+                        let tex = tex.decode();
+                        tx2.send((i, tex)).unwrap();
+                    }
+                })
+                .unwrap();
+            pipes.push(tx);
+        }
+
+        for ((i, tex), tx) in self
+            .textures
+            .drain(..)
+            .enumerate()
+            .zip(pipes.iter().cycle())
+        {
+            tx.send((i, tex)).unwrap();
+        }
+
+        (num, rx2)
+    }
+
+    #[cfg(not(feature = "parallel"))]
+    pub fn decode_textures(&mut self) -> TextureReceiver {
+        let num = self.textures.len();
+        let (tx, rx) = mpsc::channel();
+        for (i, tex) in self.textures.drain(..).enumerate() {
+            let tex = tex.decode();
+            tx.send((i, tex)).unwrap();
+        }
+        (num, rx)
     }
 }

@@ -1,9 +1,8 @@
 use crate::glow;
-use crate::{BlendMode, CompressedTexture, Mask, Model, Node, Texture, Transform};
+use crate::{BlendMode, Mask, Model, Node, Texture, TextureReceiver, Transform};
 use glfw::{Action, Context, Key};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::sync::mpsc;
 
 mod vbo;
 use vbo::Vbo;
@@ -334,7 +333,7 @@ impl<'a> GlRenderer<'a> {
         }
     }
 
-    fn upload_textures(&mut self, rx: mpsc::Receiver<(usize, Texture)>, num_textures: usize) {
+    fn upload_textures(&mut self, (num_textures, rx): TextureReceiver) {
         let mut vec = vec![None; num_textures];
         while let Ok((i, tex)) = rx.recv() {
             let texture = self.load_texture(&tex);
@@ -611,54 +610,8 @@ fn sort_nodes_by_zsort(node: &Node) -> Vec<u32> {
     sort_uuids_by_zsort(uuids)
 }
 
-#[cfg(feature = "parallel")]
-fn decode_textures(textures: &mut Vec<CompressedTexture>) -> mpsc::Receiver<(usize, Texture)> {
-    let mut num_threads = std::thread::available_parallelism().unwrap().get();
-    if num_threads > 1 {
-        num_threads -= 1;
-    }
-    if num_threads > textures.len() {
-        num_threads = textures.len();
-    }
-
-    let (tx2, rx2) = mpsc::channel();
-    let mut pipes = Vec::with_capacity(num_threads);
-    for _ in 0..num_threads {
-        let (tx, rx) = mpsc::channel::<(usize, CompressedTexture)>();
-        let tx2 = tx2.clone();
-        std::thread::Builder::new()
-            .name(String::from("Texture Decoder"))
-            .spawn(move || {
-                while let Ok((i, tex)) = rx.recv() {
-                    let tex = tex.decode();
-                    tx2.send((i, tex)).unwrap();
-                }
-            })
-            .unwrap();
-        pipes.push(tx);
-    }
-
-    for ((i, tex), tx) in textures.drain(..).enumerate().zip(pipes.iter().cycle()) {
-        tx.send((i, tex)).unwrap();
-    }
-
-    rx2
-}
-
-#[cfg(not(feature = "parallel"))]
-fn decode_textures(textures: &mut Vec<CompressedTexture>) -> mpsc::Receiver<(usize, Texture)> {
-    let (tx, rx) = mpsc::channel();
-    for (i, tex) in textures.drain(..).enumerate() {
-        let tex = tex.decode();
-        tx.send((i, tex)).unwrap();
-    }
-    rx
-}
-
 pub fn render(model: &mut Model, width: u32, height: u32) {
-    // We start decoding textures on threads…
-    let num_textures = model.textures.len();
-    let rx = decode_textures(&mut model.textures);
+    let textures = model.decode_textures();
 
     let mut glfw = glfw::init(glfw::LOG_ERRORS).unwrap();
     glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::OpenGlEs));
@@ -676,9 +629,7 @@ pub fn render(model: &mut Model, width: u32, height: u32) {
     let mut renderer = GlRenderer::new(&gl, width, height).unwrap();
     renderer.flatten_nodes(&model.puppet.nodes, None);
     renderer.upload_buffers();
-
-    // … So that here hopefully some have already been decoded, while we were setting up GLES.
-    renderer.upload_textures(rx, num_textures);
+    renderer.upload_textures(textures);
 
     let order = sort_nodes_by_zsort(&model.puppet.nodes);
     while !window.should_close() {
