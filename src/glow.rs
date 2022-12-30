@@ -59,6 +59,7 @@ pub struct NativeFramebuffer(NonZeroU32);
 extern "C" {
     fn glEnable(cap: u32);
     fn glDisable(cap: u32);
+    fn glViewport(x: i32, y: i32, width: i32, height: i32);
     fn glClearColor(r: f32, g: f32, b: f32, a: f32);
     fn glClear(mask: u32);
     fn glStencilOp(fail: u32, zfail: u32, zpass: u32);
@@ -118,6 +119,7 @@ extern "C" {
     fn glUseProgram(program: u32);
     fn glDeleteProgram(program: u32);
     fn glGetUniformLocation(program: u32, name: *const u8) -> i32;
+    fn glUniform1f(location: i32, v0: f32);
     fn glUniform2f(location: i32, v0: f32, v1: f32);
 }
 
@@ -134,6 +136,10 @@ impl Context {
 
     pub fn disable(&self, cap: u32) {
         unsafe { glDisable(cap) };
+    }
+
+    pub fn viewport(&self, x: i32, y: i32, width: i32, height: i32) {
+        unsafe { glViewport(x, y, width, height) };
     }
 
     pub fn clear_color(&self, r: f32, g: f32, b: f32, a: f32) {
@@ -388,6 +394,14 @@ impl Context {
         let name = CString::new(name).unwrap();
         let location = unsafe { glGetUniformLocation(program.0.get(), name.as_ptr() as *const _) };
         NonZeroI32::new(location).map(NativeUniformLocation)
+    }
+
+    pub fn uniform1f(&self, location: Option<&NativeUniformLocation>, v0: f32) {
+        let location = match location {
+            None => 0,
+            Some(NativeUniformLocation(location)) => location.get(),
+        };
+        unsafe { glUniform1f(location, v0) };
     }
 
     pub fn uniform2f(&self, location: Option<&NativeUniformLocation>, v0: f32, v1: f32) {

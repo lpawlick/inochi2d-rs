@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::BufReader;
+use std::str::FromStr;
 
 fn print_info(meta: &inochi2d::Meta) {
     if let Some(ref name) = meta.name {
@@ -31,13 +32,27 @@ fn print_info(meta: &inochi2d::Meta) {
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
-    if args.len() != 2 {
-        eprintln!("Usage: {} <model.inp>", args[0]);
+    if args.len() < 2 || args.len() > 3 {
+        eprintln!("Usage: {} <model.inp> [<width>×<height>]", args[0]);
         return;
     }
     let file = File::open(&args[1]).unwrap();
     let file = BufReader::new(file);
     let mut model = inochi2d::Model::parse(file).unwrap();
     print_info(&model.puppet.meta);
-    inochi2d::gl::render(&mut model);
+
+    let size = if args.len() == 3 {
+        args[2].split_once('x').map(|(width, height)| {
+            (
+                u32::from_str(width).unwrap(),
+                u32::from_str(height).unwrap(),
+            )
+        })
+    } else {
+        None
+    };
+
+    let (width, height) = size.unwrap_or((2048, 2048));
+
+    inochi2d::gl::render(&mut model, width, height);
 }

@@ -11,10 +11,9 @@ use vbo::Vbo;
 mod program;
 use program::Program;
 
-const SIZE: u32 = 2048;
-
 const VERTEX: &str = "#version 100
 precision mediump float;
+uniform float ratio;
 uniform vec2 trans;
 attribute vec2 pos;
 attribute vec2 uvs;
@@ -23,9 +22,8 @@ varying vec2 texcoord;
 
 void main() {
     vec2 pos2 = pos + trans + deform;
-    pos2.y = -pos2.y;
     texcoord = vec2(uvs.x, -uvs.y);
-    gl_Position = vec4(pos2 / 3072.0, 0.0, 1.0);
+    gl_Position = vec4(pos2.x * ratio / 3072.0, -pos2.y / 3072.0, 0.0, 1.0);
 }
 ";
 
@@ -66,12 +64,16 @@ void main() {
 ";
 
 struct Locations {
+    ratio: Option<glow::NativeUniformLocation>,
     trans: Option<glow::NativeUniformLocation>,
 }
 
 impl Locations {
     fn new() -> Locations {
-        Locations { trans: None }
+        Locations {
+            ratio: None,
+            trans: None,
+        }
     }
 }
 
@@ -101,13 +103,17 @@ struct GlRenderer<'a> {
 }
 
 impl<'a> GlRenderer<'a> {
-    fn new(gl: &'a glow::Context) -> Result<GlRenderer, String> {
+    fn new(gl: &'a glow::Context, width: u32, height: u32) -> Result<GlRenderer, String> {
         let part_program = Program::builder(gl)?
             .shader(glow::VERTEX_SHADER, VERTEX)?
             .shader(glow::FRAGMENT_SHADER, FRAGMENT)?
             .link()?;
         let mut locations = Locations::new();
+        locations.ratio = part_program.get_uniform_location("ratio");
         locations.trans = part_program.get_uniform_location("trans");
+
+        part_program.use_();
+        gl.uniform1f(locations.ratio.as_ref(), height as f32 / width as f32);
 
         let composite_program = Program::builder(gl)?
             .shader(glow::VERTEX_SHADER, VERTEX_PASSTHROUGH)?
@@ -123,7 +129,7 @@ impl<'a> GlRenderer<'a> {
         gl.enable(glow::BLEND);
         gl.stencil_mask(0xff);
 
-        let composite_texture = Self::upload_texture(gl, SIZE, SIZE, None);
+        let composite_texture = Self::upload_texture(gl, width, height, None);
         let composite_fbo = gl.create_framebuffer().unwrap();
         gl.bind_framebuffer(glow::FRAMEBUFFER, Some(&composite_fbo));
         gl.framebuffer_texture_2d(
@@ -164,6 +170,25 @@ impl<'a> GlRenderer<'a> {
             composite_texture,
             composite_fbo,
         })
+    }
+
+    fn set_size(&mut self, width: i32, height: i32) {
+        let gl = self.gl;
+        gl.viewport(0, 0, width, height);
+        gl.uniform1f(self.locations.ratio.as_ref(), height as f32 / width as f32);
+        self.bind_texture(&self.composite_texture);
+        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+            glow::TEXTURE_2D,
+            0,
+            glow::RGBA as i32,
+            width,
+            height,
+            0,
+            glow::RGBA,
+            glow::UNSIGNED_BYTE,
+            None,
+        )
+        .unwrap();
     }
 
     fn flatten_nodes(&mut self, node: &Node, parent: Option<u32>) {
@@ -630,7 +655,7 @@ fn decode_textures(textures: &mut Vec<CompressedTexture>) -> mpsc::Receiver<(usi
     rx
 }
 
-pub fn render(model: &mut Model) {
+pub fn render(model: &mut Model, width: u32, height: u32) {
     // We start decoding textures on threads…
     let num_textures = model.textures.len();
     let rx = decode_textures(&mut model.textures);
@@ -639,16 +664,16 @@ pub fn render(model: &mut Model) {
     glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::OpenGlEs));
     glfw.window_hint(glfw::WindowHint::ContextVersion(2, 0));
     glfw.window_hint(glfw::WindowHint::TransparentFramebuffer(true));
-    glfw.window_hint(glfw::WindowHint::Decorated(false));
 
     let (mut window, events) = glfw
-        .create_window(SIZE, SIZE, "inochi2d", glfw::WindowMode::Windowed)
+        .create_window(width, height, "inochi2d", glfw::WindowMode::Windowed)
         .unwrap();
     window.make_current();
     window.set_key_polling(true);
+    window.set_framebuffer_size_polling(true);
     let gl = glow::Context::new();
 
-    let mut renderer = GlRenderer::new(&gl).unwrap();
+    let mut renderer = GlRenderer::new(&gl, width, height).unwrap();
     renderer.flatten_nodes(&model.puppet.nodes, None);
     renderer.upload_buffers();
 
@@ -664,6 +689,9 @@ pub fn render(model: &mut Model) {
         glfw.poll_events();
         for (_, event) in glfw::flush_messages(&events) {
             match event {
+                glfw::WindowEvent::FramebufferSize(width, height) => {
+                    renderer.set_size(width, height);
+                }
                 glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
                     window.set_should_close(true)
                 }
