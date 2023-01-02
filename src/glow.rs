@@ -131,6 +131,7 @@ extern "C" {
     fn glTexParameteri(target: u32, pname: u32, param: i32);
     fn glGenFramebuffers(n: i32, out: *mut u32);
     fn glBindFramebuffer(target: u32, fbo: u32);
+    fn glDeleteFramebuffers(n: i32, framebuffers: *const u32);
     fn glFramebufferTexture2D(
         target: u32,
         attachment: u32,
@@ -320,6 +321,14 @@ impl Context {
             Some(NativeFramebuffer(fbo)) => fbo.get(),
         };
         unsafe { glBindFramebuffer(target, fbo) };
+    }
+
+    pub fn delete_framebuffer(&self, framebuffer: Option<&NativeFramebuffer>) {
+        let framebuffer = match framebuffer {
+            None => 0,
+            Some(NativeFramebuffer(framebuffer)) => framebuffer.get(),
+        };
+        unsafe { glDeleteFramebuffers(1, &framebuffer) };
     }
 
     pub fn framebuffer_texture_2d(

@@ -18,6 +18,9 @@ use program::Program;
 mod texture;
 use texture::Texture as GlTexture;
 
+mod framebuffer;
+use framebuffer::Framebuffer;
+
 const VERTEX: &str = "#version 100
 precision mediump float;
 uniform float ratio;
@@ -105,7 +108,7 @@ pub struct GlRenderer<'a> {
     part_program: Program<'a>,
     locations: Locations,
     composite_program: Program<'a>,
-    composite_fbo: glow::NativeFramebuffer,
+    composite_fbo: Framebuffer<'a>,
     composite_texture: GlTexture<'a>,
 }
 
@@ -137,20 +140,8 @@ impl<'a> GlRenderer<'a> {
         gl.stencil_mask(0xff);
 
         let composite_texture = GlTexture::from_data(gl, width, height, None)?;
-        let composite_fbo = gl.create_framebuffer().unwrap();
-        gl.bind_framebuffer(glow::FRAMEBUFFER, Some(&composite_fbo));
-        gl.framebuffer_texture_2d(
-            glow::FRAMEBUFFER,
-            glow::COLOR_ATTACHMENT0,
-            glow::TEXTURE_2D,
-            Some(&composite_texture.texture),
-            0,
-        );
-        assert_eq!(
-            gl.check_framebuffer_status(glow::FRAMEBUFFER),
-            glow::FRAMEBUFFER_COMPLETE
-        );
-        gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+        let composite_fbo = Framebuffer::new(gl);
+        composite_fbo.attach_texture(&composite_texture);
 
         let mutable = RefCell::new(MutableStuff {
             prev_program: None,
@@ -431,7 +422,7 @@ impl<'a> GlRenderer<'a> {
 
     fn render_composite(&self, composite: &Composite) {
         let gl = &self.gl;
-        gl.bind_framebuffer(glow::FRAMEBUFFER, Some(&self.composite_fbo));
+        self.composite_fbo.bind();
         gl.clear(glow::COLOR_BUFFER_BIT);
         self.render_nodes(&composite.children);
 
