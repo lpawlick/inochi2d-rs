@@ -116,6 +116,7 @@ extern "C" {
     fn glDrawElements(mode: u32, count: i32, type_: u32, indices: i32);
     fn glGenTextures(n: i32, out: *mut u32);
     fn glBindTexture(target: u32, tex: u32);
+    fn glDeleteTextures(n: i32, textures: *const u32);
     fn glTexImage2D(
         target: u32,
         level: i32,
@@ -261,6 +262,14 @@ impl Context {
             Some(NativeTexture(texture)) => texture.get(),
         };
         unsafe { glBindTexture(target, texture) };
+    }
+
+    pub fn delete_texture(&self, texture: Option<&NativeTexture>) {
+        let texture = match texture {
+            None => 0,
+            Some(NativeTexture(texture)) => texture.get(),
+        };
+        unsafe { glDeleteTextures(1, &texture) };
     }
 
     pub fn tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(

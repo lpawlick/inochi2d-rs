@@ -15,6 +15,9 @@ use vbo::Vbo;
 mod program;
 use program::Program;
 
+mod texture;
+use texture::Texture as GlTexture;
+
 const VERTEX: &str = "#version 100
 precision mediump float;
 uniform float ratio;
@@ -98,12 +101,12 @@ pub struct GlRenderer<'a> {
     uvs: Vbo<'a, f32>,
     deform: Vbo<'a, f32>,
     ibo: Vbo<'a, u16>,
-    textures: Vec<glow::NativeTexture>,
+    textures: Vec<GlTexture<'a>>,
     part_program: Program<'a>,
     locations: Locations,
     composite_program: Program<'a>,
     composite_fbo: glow::NativeFramebuffer,
-    composite_texture: glow::NativeTexture,
+    composite_texture: GlTexture<'a>,
 }
 
 impl<'a> GlRenderer<'a> {
@@ -133,14 +136,14 @@ impl<'a> GlRenderer<'a> {
         gl.enable(glow::BLEND);
         gl.stencil_mask(0xff);
 
-        let composite_texture = Self::upload_texture(gl, width, height, None);
+        let composite_texture = GlTexture::from_data(gl, width, height, None)?;
         let composite_fbo = gl.create_framebuffer().unwrap();
         gl.bind_framebuffer(glow::FRAMEBUFFER, Some(&composite_fbo));
         gl.framebuffer_texture_2d(
             glow::FRAMEBUFFER,
             glow::COLOR_ATTACHMENT0,
             glow::TEXTURE_2D,
-            Some(&composite_texture),
+            Some(&composite_texture.texture),
             0,
         );
         assert_eq!(
@@ -181,18 +184,7 @@ impl<'a> GlRenderer<'a> {
         gl.viewport(0, 0, width, height);
         gl.uniform1f(self.locations.ratio.as_ref(), height as f32 / width as f32);
         self.bind_texture(&self.composite_texture);
-        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
-            glow::TEXTURE_2D,
-            0,
-            glow::RGBA as i32,
-            width,
-            height,
-            0,
-            glow::RGBA,
-            glow::UNSIGNED_BYTE,
-            None,
-        )
-        .unwrap();
+        self.composite_texture.resize(width, height);
     }
 
     fn flatten_nodes(&mut self, node: &Node, parent: Option<u32>) {
@@ -295,68 +287,24 @@ impl<'a> GlRenderer<'a> {
         }
     }
 
-    fn upload_texture(
-        gl: &glow::Context,
-        width: u32,
-        height: u32,
-        data: Option<&[u8]>,
-    ) -> glow::NativeTexture {
-        let texture = gl.create_texture().unwrap();
-        gl.bind_texture(glow::TEXTURE_2D, Some(&texture));
-        gl.tex_parameteri(
-            glow::TEXTURE_2D,
-            glow::TEXTURE_MIN_FILTER,
-            glow::LINEAR as i32,
-        );
-        gl.tex_parameteri(
-            glow::TEXTURE_2D,
-            glow::TEXTURE_MAG_FILTER,
-            glow::LINEAR as i32,
-        );
-        if data.is_none() {
-            gl.tex_parameteri(
-                glow::TEXTURE_2D,
-                glow::TEXTURE_WRAP_S,
-                glow::CLAMP_TO_EDGE as i32,
-            );
-            gl.tex_parameteri(
-                glow::TEXTURE_2D,
-                glow::TEXTURE_WRAP_T,
-                glow::CLAMP_TO_EDGE as i32,
-            );
-        }
-        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
-            glow::TEXTURE_2D,
-            0,
-            glow::RGBA as i32,
-            width as i32,
-            height as i32,
-            0,
-            glow::RGBA,
-            glow::UNSIGNED_BYTE,
-            data,
-        )
-        .unwrap();
-        texture
-    }
-
-    fn load_texture(&self, tex: &Texture) -> glow::NativeTexture {
+    fn load_texture(&self, tex: &Texture) -> Result<GlTexture<'a>, String> {
         match tex {
             Texture::Rgba {
                 width,
                 height,
                 data,
-            } => Self::upload_texture(self.gl, *width, *height, Some(data)),
+            } => GlTexture::from_data(self.gl, *width, *height, Some(data)),
         }
     }
 
-    fn upload_textures(&mut self, (num_textures, rx): TextureReceiver) {
+    fn upload_textures(&mut self, (num_textures, rx): TextureReceiver) -> Result<(), String> {
         let mut vec = vec![None; num_textures];
         while let Ok((i, tex)) = rx.recv() {
-            let texture = self.load_texture(&tex);
+            let texture = self.load_texture(&tex)?;
             vec[i] = Some(texture);
         }
         self.textures = vec.into_iter().map(Option::unwrap).collect();
+        Ok(())
     }
 
     fn upload_buffers(&mut self) {
@@ -409,14 +357,13 @@ impl<'a> GlRenderer<'a> {
         *prev = Some(program.program.clone());
     }
 
-    fn bind_texture(&self, texture: &glow::NativeTexture) {
+    fn bind_texture(&self, texture: &GlTexture) {
         let prev = &mut self.mutable.borrow_mut().prev_texture;
-        if *prev == Some(texture.clone()) {
+        if *prev == Some(texture.texture.clone()) {
             return;
         }
-        let gl = &self.gl;
-        gl.bind_texture(glow::TEXTURE_2D, Some(texture));
-        *prev = Some(texture.clone());
+        texture.bind();
+        *prev = Some(texture.texture.clone());
     }
 
     fn set_blend_mode(&self, mode: BlendMode) {
@@ -637,6 +584,6 @@ pub fn setup<'a>(
     let mut renderer = GlRenderer::new(gl, width, height).unwrap();
     renderer.flatten_nodes(nodes, None);
     renderer.upload_buffers();
-    renderer.upload_textures(textures);
+    renderer.upload_textures(textures).unwrap();
     renderer
 }
