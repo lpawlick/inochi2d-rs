@@ -24,7 +24,7 @@ Build:
 ```
 Run:
 ```shell
-% cargo run --release --example=render <puppet.inp>
+% cargo run --release <puppet.inp>
 ```
 
 You can find two example puppets in [Inochi2D’s example models](https://github.com/Inochi2D/example-models).

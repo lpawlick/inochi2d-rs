@@ -11,6 +11,7 @@ readme = "README.md"
 keywords = ["inochi2d", "graphics", "2d", "opengl"]
 categories = ["game-development", "graphics", "rendering", "rendering::data-formats"]
 license = "MPL-2.0"
+default-run = "render"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
