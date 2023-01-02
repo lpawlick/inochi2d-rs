@@ -422,11 +422,12 @@ impl<'a> GlRenderer<'a> {
 
     fn render_composite(&self, composite: &Composite) {
         let gl = &self.gl;
-        self.composite_fbo.bind();
-        gl.clear(glow::COLOR_BUFFER_BIT);
-        self.render_nodes(&composite.children);
+        {
+            let _guard = self.composite_fbo.bind();
+            gl.clear(glow::COLOR_BUFFER_BIT);
+            self.render_nodes(&composite.children);
+        }
 
-        gl.bind_framebuffer(glow::FRAMEBUFFER, None);
         self.bind_texture(&self.composite_texture);
         self.set_blend_mode(composite.blend_mode);
         self.use_program(&self.composite_program);

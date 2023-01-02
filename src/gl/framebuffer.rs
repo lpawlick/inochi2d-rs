@@ -7,6 +7,18 @@
 use super::texture::Texture;
 use crate::glow;
 
+#[must_use]
+pub struct BindGuard<'a> {
+    gl: &'a glow::Context,
+}
+
+impl<'a> Drop for BindGuard<'a> {
+    fn drop(&mut self) {
+        let gl = self.gl;
+        gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+    }
+}
+
 #[derive(Clone)]
 pub struct Framebuffer<'a> {
     gl: &'a glow::Context,
@@ -28,7 +40,7 @@ impl<'a> Framebuffer<'a> {
 
     pub fn attach_texture(&self, texture: &Texture) {
         let gl = self.gl;
-        self.bind();
+        let _guard = self.bind();
         gl.framebuffer_texture_2d(
             glow::FRAMEBUFFER,
             glow::COLOR_ATTACHMENT0,
@@ -40,11 +52,11 @@ impl<'a> Framebuffer<'a> {
             gl.check_framebuffer_status(glow::FRAMEBUFFER),
             glow::FRAMEBUFFER_COMPLETE
         );
-        gl.bind_framebuffer(glow::FRAMEBUFFER, None);
     }
 
-    pub fn bind(&self) {
+    pub fn bind(&self) -> BindGuard {
         let gl = self.gl;
         gl.bind_framebuffer(glow::FRAMEBUFFER, Some(&self.fbo));
+        BindGuard { gl }
     }
 }
