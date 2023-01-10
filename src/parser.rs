@@ -193,88 +193,39 @@ pub enum InterpolateMode {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields, tag = "param_name")]
-pub enum Binding {
+#[serde(deny_unknown_fields, tag = "param_name", content = "values")]
+pub enum BindingValues {
     #[serde(rename = "zSort")]
-    ZSort {
-        node: u32,
-        values: Vec<Vec<f32>>,
-        #[serde(rename = "isSet")]
-        is_set: Vec<Vec<bool>>,
-        interpolate_mode: InterpolateMode,
-    },
+    ZSort(Vec<Vec<f32>>),
     #[serde(rename = "transform.t.x")]
-    TransformTX {
-        node: u32,
-        values: Vec<Vec<f32>>,
-        #[serde(rename = "isSet")]
-        is_set: Vec<Vec<bool>>,
-        interpolate_mode: InterpolateMode,
-    },
+    TransformTX(Vec<Vec<f32>>),
     #[serde(rename = "transform.t.y")]
-    TransformTY {
-        node: u32,
-        values: Vec<Vec<f32>>,
-        #[serde(rename = "isSet")]
-        is_set: Vec<Vec<bool>>,
-        interpolate_mode: InterpolateMode,
-    },
+    TransformTY(Vec<Vec<f32>>),
     #[serde(rename = "transform.t.z")]
-    TransformTZ {
-        node: u32,
-        values: Vec<Vec<f32>>,
-        #[serde(rename = "isSet")]
-        is_set: Vec<Vec<bool>>,
-        interpolate_mode: InterpolateMode,
-    },
+    TransformTZ(Vec<Vec<f32>>),
     #[serde(rename = "transform.s.x")]
-    TransformSX {
-        node: u32,
-        values: Vec<Vec<f32>>,
-        #[serde(rename = "isSet")]
-        is_set: Vec<Vec<bool>>,
-        interpolate_mode: InterpolateMode,
-    },
+    TransformSX(Vec<Vec<f32>>),
     #[serde(rename = "transform.s.y")]
-    TransformSY {
-        node: u32,
-        values: Vec<Vec<f32>>,
-        #[serde(rename = "isSet")]
-        is_set: Vec<Vec<bool>>,
-        interpolate_mode: InterpolateMode,
-    },
+    TransformSY(Vec<Vec<f32>>),
     #[serde(rename = "transform.r.x")]
-    TransformRX {
-        node: u32,
-        values: Vec<Vec<f32>>,
-        #[serde(rename = "isSet")]
-        is_set: Vec<Vec<bool>>,
-        interpolate_mode: InterpolateMode,
-    },
+    TransformRX(Vec<Vec<f32>>),
     #[serde(rename = "transform.r.y")]
-    TransformRY {
-        node: u32,
-        values: Vec<Vec<f32>>,
-        #[serde(rename = "isSet")]
-        is_set: Vec<Vec<bool>>,
-        interpolate_mode: InterpolateMode,
-    },
+    TransformRY(Vec<Vec<f32>>),
     #[serde(rename = "transform.r.z")]
-    TransformRZ {
-        node: u32,
-        values: Vec<Vec<f32>>,
-        #[serde(rename = "isSet")]
-        is_set: Vec<Vec<bool>>,
-        interpolate_mode: InterpolateMode,
-    },
+    TransformRZ(Vec<Vec<f32>>),
     #[serde(rename = "deform")]
-    Deform {
-        node: u32,
-        values: Vec<Vec<Vec<[f32; 2]>>>,
-        #[serde(rename = "isSet")]
-        is_set: Vec<Vec<bool>>,
-        interpolate_mode: InterpolateMode,
-    },
+    Deform(Vec<Vec<Vec<[f32; 2]>>>),
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Binding {
+    node: u32,
+    #[serde(flatten)]
+    values: BindingValues,
+    #[serde(rename = "isSet")]
+    is_set: Vec<Vec<bool>>,
+    interpolate_mode: InterpolateMode,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
