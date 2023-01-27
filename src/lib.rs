@@ -16,4 +16,6 @@ mod tga;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-pub use parser::{BlendMode, Mask, Meta, Model, Node, Puppet, Texture, TextureReceiver, Transform};
+pub use parser::{
+    Anim, BlendMode, Mask, Meta, Model, Node, Param, Puppet, Texture, TextureReceiver, Transform,
+};

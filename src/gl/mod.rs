@@ -5,7 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::glow;
-use crate::{BlendMode, Mask, Node, Texture, TextureReceiver, Transform};
+use crate::{Anim, BlendMode, Mask, Node, Param, Texture, TextureReceiver, Transform};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
@@ -236,11 +236,13 @@ impl<'a> GlRenderer<'a> {
                     start_indice,
                     num_indices,
                     start_deform,
+                    num_verts,
                     transform,
                     blend_mode,
                     textures,
                     parent,
                     masks,
+                    anim: Vec::new(),
                     #[cfg(feature = "debug")]
                     name: name.clone(),
                 };
@@ -323,6 +325,10 @@ impl<'a> GlRenderer<'a> {
 
     fn get(&self, uuid: u32) -> Option<&EnumNode> {
         self.nodes.get(&uuid)
+    }
+
+    fn get_mut(&mut self, uuid: u32) -> Option<&mut EnumNode> {
+        self.nodes.get_mut(&uuid)
     }
 
     fn set_stencil(&self, stencil: bool) {
@@ -410,7 +416,16 @@ impl<'a> GlRenderer<'a> {
         let gl = &self.gl;
         self.bind_texture(&self.textures[part.textures[0]]);
         self.set_blend_mode(part.blend_mode);
-        gl.uniform2f(self.locations.trans.as_ref(), trans[0], trans[1]);
+        let mut tx = 0.;
+        let mut ty = 0.;
+        for anim in part.anim.iter() {
+            match anim {
+                Anim::TransformTX(f) => tx += f,
+                Anim::TransformTY(f) => ty += f,
+                _ => (),
+            }
+        }
+        gl.uniform2f(self.locations.trans.as_ref(), trans[0] + tx, trans[1] + ty);
 
         gl.draw_elements_with_i32(
             glow::TRIANGLES,
@@ -464,6 +479,61 @@ impl<'a> GlRenderer<'a> {
         let gl = &self.gl;
         gl.clear(glow::COLOR_BUFFER_BIT);
     }
+
+    pub fn animate(
+        &mut self,
+        params: &[Param],
+        values: &std::collections::HashMap<&str, [f32; 2]>,
+    ) {
+        for node in self.nodes.values_mut() {
+            match node {
+                EnumNode::Part(part) => {
+                    part.anim.clear();
+                }
+                _ => (),
+            }
+        }
+        for param in params {
+            if let Some(value) = values.get(param.name.as_str()) {
+                for binding in &param.bindings {
+                    match self.get_mut(binding.node) {
+                        Some(EnumNode::Part(part)) => part
+                            .anim
+                            .push(binding.interpolate(&param.axis_points, *value)),
+                        Some(EnumNode::Composite(_)) => todo!(),
+                        Some(EnumNode::Node(_)) => todo!(),
+                        Some(EnumNode::SimplePhysics) => (), // Ignore for now.
+                        None => (), // We don’t create non-enabled nodes, so ignore it too.
+                    }
+                }
+            }
+        }
+        for node in self.nodes.values() {
+            match node {
+                EnumNode::Part(part) => {
+                    let mut dirty = false;
+                    let mut deform = vec![0.; part.num_verts];
+                    for i in part.anim.iter() {
+                        match i {
+                            Anim::Deform(values) => {
+                                dirty = true;
+                                deform
+                                    .iter_mut()
+                                    .enumerate()
+                                    .for_each(|(i, x)| *x += values[i]);
+                            }
+                            _ => (),
+                        }
+                    }
+                    if dirty {
+                        self.deform
+                            .update(self.gl, part.start_deform as i32, &deform);
+                    }
+                }
+                _ => (),
+            }
+        }
+    }
 }
 
 struct Composite {
@@ -492,11 +562,13 @@ struct Part {
     start_indice: u16,
     num_indices: u16,
     start_deform: u16,
+    num_verts: usize,
     transform: Transform,
     textures: [usize; 3],
     blend_mode: BlendMode,
     parent: u32,
     masks: Vec<Mask>,
+    anim: Vec<Anim>,
     #[cfg(feature = "debug")]
     name: String,
 }

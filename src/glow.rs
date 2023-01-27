@@ -112,6 +112,7 @@ extern "C" {
     fn glGenBuffers(n: i32, out: *mut u32);
     fn glBindBuffer(target: u32, buffer: u32);
     fn glBufferData(target: u32, size: isize, data: *const u8, usage: u32);
+    fn glBufferSubData(target: u32, offset: i32, size: isize, data: *const u8);
     fn glDrawArrays(mode: u32, first: i32, count: i32);
     fn glDrawElements(mode: u32, count: i32, type_: u32, indices: i32);
     fn glGenTextures(n: i32, out: *mut u32);
@@ -247,6 +248,12 @@ impl Context {
         let size = bytes.len() as isize;
         let data = bytes.as_ptr();
         unsafe { glBufferData(target, size, data, usage) };
+    }
+
+    pub fn buffer_sub_data_with_i32_and_u8_array(&self, target: u32, offset: i32, bytes: &[u8]) {
+        let size = bytes.len() as isize;
+        let data = bytes.as_ptr();
+        unsafe { glBufferSubData(target, offset, size, data) };
     }
 
     pub fn draw_arrays(&self, mode: u32, first: i32, count: i32) {

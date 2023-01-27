@@ -220,12 +220,178 @@ pub enum BindingValues {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Binding {
-    node: u32,
+    pub node: u32,
     #[serde(flatten)]
     values: BindingValues,
     #[serde(rename = "isSet")]
     is_set: Vec<Vec<bool>>,
     interpolate_mode: InterpolateMode,
+}
+
+#[derive(Debug)]
+pub enum Anim {
+    ZSort(f32),
+    TransformTX(f32),
+    TransformTY(f32),
+    TransformTZ(f32),
+    TransformSX(f32),
+    TransformSY(f32),
+    TransformRX(f32),
+    TransformRY(f32),
+    TransformRZ(f32),
+    Deform(Vec<f32>),
+}
+
+impl Binding {
+    pub fn interpolate(&self, axis_points: &[Vec<f32>; 2], pos: [f32; 2]) -> Anim {
+        assert!(pos[0] >= 0.);
+        assert!(pos[1] >= 0.);
+        assert!(pos[0] <= 1.);
+        assert!(pos[1] <= 1.);
+
+        match &self.values {
+            BindingValues::Deform(values) => Anim::Deform(
+                interpolate_deform(&values, axis_points, pos)
+                    .into_iter()
+                    .flatten()
+                    .collect(),
+            ),
+            BindingValues::TransformTX(values) => {
+                Anim::TransformTX(interpolate_f32(&values, axis_points, pos))
+            }
+            BindingValues::TransformTY(values) => {
+                Anim::TransformTY(interpolate_f32(&values, axis_points, pos))
+            }
+            BindingValues::TransformSX(values) => {
+                Anim::TransformSX(interpolate_f32(&values, axis_points, pos))
+            }
+            BindingValues::TransformSY(values) => {
+                Anim::TransformSY(interpolate_f32(&values, axis_points, pos))
+            }
+            BindingValues::TransformRY(values) => {
+                Anim::TransformRY(interpolate_f32(&values, axis_points, pos))
+            }
+            BindingValues::TransformRZ(values) => {
+                Anim::TransformRZ(interpolate_f32(&values, axis_points, pos))
+            }
+            BindingValues::ZSort(values) => Anim::ZSort(interpolate_f32(&values, axis_points, pos)),
+            val => panic!("{val:?}"),
+        }
+    }
+}
+
+fn get_step(pos: f32, index: usize, axis_points: &[f32]) -> f32 {
+    let a = axis_points[index - 1];
+    let b = axis_points[index];
+    (pos - a) / (b - a)
+}
+
+fn mix(a: f32, b: f32, t: f32) -> f32 {
+    a + t * (b - a)
+}
+
+fn mix_deform(a: &[[f32; 2]], b: &[[f32; 2]], t: f32) -> Vec<[f32; 2]> {
+    a.iter()
+        .zip(b.iter())
+        .map(|([ax, ay], [bx, by])| [mix(*ax, *bx, t), mix(*ay, *by, t)])
+        .collect()
+}
+
+// TODO: merge the next two functions into one, they are almost the same just operating on
+// different types.
+
+fn interpolate_deform(
+    values: &[Vec<Vec<[f32; 2]>>],
+    axis_points: &[Vec<f32>; 2],
+    pos: [f32; 2],
+) -> Vec<[f32; 2]> {
+    for (i, x) in axis_points[0].iter().enumerate() {
+        if *x == pos[0] {
+            for (j, y) in axis_points[1].iter().enumerate() {
+                if *y == pos[1] {
+                    // No interpolation needed.
+                    return values[i][j].clone();
+                }
+                if *y > pos[1] {
+                    let a = &values[i][j - 1];
+                    let b = &values[i][j];
+                    let t = get_step(pos[1], j, &axis_points[1]);
+                    return mix_deform(a, b, t);
+                }
+            }
+            unreachable!();
+        }
+        if *x > pos[0] {
+            for (j, y) in axis_points[1].iter().enumerate() {
+                if *y == pos[1] {
+                    let a = &values[i - 1][j];
+                    let b = &values[i][j];
+                    let t = get_step(pos[0], i, &axis_points[0]);
+                    return mix_deform(a, b, t);
+                }
+                if *y > pos[1] {
+                    let a = &values[i - 1][j - 1];
+                    let b = &values[i][j - 1];
+                    let t = get_step(pos[0], i, &axis_points[0]);
+                    let y1 = mix_deform(a, b, t);
+
+                    let a = &values[i - 1][j];
+                    let b = &values[i][j];
+                    let y2 = mix_deform(a, b, t);
+
+                    let t = get_step(pos[1], j, &axis_points[1]);
+                    return mix_deform(&y1, &y2, t);
+                }
+            }
+            unreachable!();
+        }
+    }
+    unreachable!();
+}
+
+fn interpolate_f32(values: &[Vec<f32>], axis_points: &[Vec<f32>; 2], pos: [f32; 2]) -> f32 {
+    for (i, x) in axis_points[0].iter().enumerate() {
+        if *x == pos[0] {
+            for (j, y) in axis_points[1].iter().enumerate() {
+                if *y == pos[1] {
+                    // No interpolation needed.
+                    return values[i][j];
+                }
+                if *y > pos[1] {
+                    let a = values[i][j - 1];
+                    let b = values[i][j];
+                    let t = get_step(pos[1], j, &axis_points[1]);
+                    return mix(a, b, t);
+                }
+            }
+            unreachable!();
+        }
+        if *x > pos[0] {
+            for (j, y) in axis_points[1].iter().enumerate() {
+                if *y == pos[1] {
+                    let a = values[i - 1][j];
+                    let b = values[i][j];
+                    let t = get_step(pos[0], i, &axis_points[0]);
+                    return mix(a, b, t);
+                }
+                if *y > pos[1] {
+                    let a = values[i - 1][j - 1];
+                    let b = values[i][j - 1];
+                    let t = get_step(pos[0], i, &axis_points[0]);
+                    let y1 = mix(a, b, t);
+
+                    let a = values[i - 1][j];
+                    let b = values[i][j];
+                    let y2 = mix(a, b, t);
+
+                    let t = get_step(pos[1], j, &axis_points[1]);
+                    return mix(y1, y2, t);
+                }
+            }
+            unreachable!();
+        }
+    }
+    unreachable!();
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -237,7 +403,7 @@ pub struct Param {
     min: [f32; 2],
     max: [f32; 2],
     defaults: [f32; 2],
-    axis_points: [Vec<f32>; 2],
+    pub axis_points: [Vec<f32>; 2],
     pub bindings: Vec<Binding>,
 }
 
