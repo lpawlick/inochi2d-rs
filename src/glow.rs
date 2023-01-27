@@ -164,10 +164,10 @@ extern "C" {
     fn glPopDebugGroup();
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(not(target_arch = "wasm32"))]
 pub struct Context;
 
-#[cfg(target_os = "linux")]
+#[cfg(not(target_arch = "wasm32"))]
 impl Context {
     pub fn new() -> Context {
         Context
