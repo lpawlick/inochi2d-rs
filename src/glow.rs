@@ -156,6 +156,12 @@ extern "C" {
     fn glGetUniformLocation(program: u32, name: *const u8) -> i32;
     fn glUniform1f(location: i32, v0: f32);
     fn glUniform2f(location: i32, v0: f32, v1: f32);
+
+    // GL_KHR_debug
+    #[cfg(feature = "debug")]
+    fn glPushDebugGroup(source: u32, id: u32, length: i32, message: *const u8);
+    #[cfg(feature = "debug")]
+    fn glPopDebugGroup();
 }
 
 #[cfg(target_os = "linux")]
@@ -463,5 +469,17 @@ impl Context {
             Some(NativeUniformLocation(location)) => location.get(),
         };
         unsafe { glUniform2f(location, v0, v1) };
+    }
+
+    // GL_KHR_debug
+
+    #[cfg(feature = "debug")]
+    pub fn push_debug_group(&self, source: u32, id: u32, message: &str) {
+        unsafe { glPushDebugGroup(source, id, message.len() as i32, message.as_ptr()) };
+    }
+
+    #[cfg(feature = "debug")]
+    pub fn pop_debug_group(&self) {
+        unsafe { glPopDebugGroup() };
     }
 }
