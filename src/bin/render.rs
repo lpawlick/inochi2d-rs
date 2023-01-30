@@ -77,9 +77,10 @@ fn main() {
     let gl = inochi2d::glow::Context::new();
     let mut renderer = inochi2d::gl::setup(&gl, &model.puppet.nodes, textures, width, height);
 
+    let num_nodes = inochi2d::gl::count_nodes(&model.puppet.nodes);
     while !window.should_close() {
         renderer.clear();
-        let order = inochi2d::gl::sort_nodes_by_zsort(&model.puppet.nodes);
+        let order = inochi2d::gl::sort_nodes_by_zsort(num_nodes, &model.puppet.nodes);
         renderer.render_nodes(&order);
         window.swap_buffers();
 

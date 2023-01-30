@@ -614,28 +614,30 @@ fn collect_children_uuids(node: &Node) -> Vec<u32> {
     uuids
 }
 
-fn recurse(node: &Node, zsort: f32) -> Vec<(u32, f32)> {
+fn recurse(acc: &mut Vec<(u32, f32)>, node: &Node, zsort: f32) {
     if !node.enabled() {
-        return Vec::new();
+        return;
     }
     let zsort = zsort + node.zsort();
-    let mut vec = vec![(node.uuid(), zsort)];
+    acc.push((node.uuid(), zsort));
     if let Node::Node { children, .. } | Node::Part { children, .. } = node {
         for child in children.iter() {
-            vec.extend(recurse(child, zsort));
+            recurse(acc, child, zsort);
         }
     }
-    vec
 }
 
-fn sort_uuids_by_zsort(mut uuids: Vec<(u32, f32)>) -> Vec<u32> {
+pub fn count_nodes(node: &Node) -> usize {
+    let mut uuids = Vec::new();
+    recurse(&mut uuids, node, 0.);
+    uuids.len()
+}
+
+pub fn sort_nodes_by_zsort(capacity: usize, node: &Node) -> Vec<u32> {
+    let mut uuids = Vec::with_capacity(capacity);
+    recurse(&mut uuids, node, 0.);
     uuids.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-    uuids.into_iter().map(|(uuid, zsort)| uuid).collect()
-}
-
-pub fn sort_nodes_by_zsort(node: &Node) -> Vec<u32> {
-    let uuids = recurse(node, 0.);
-    sort_uuids_by_zsort(uuids)
+    uuids.into_iter().map(|(uuid, _)| uuid).collect()
 }
 
 pub fn setup<'a>(
