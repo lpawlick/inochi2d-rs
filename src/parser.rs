@@ -250,12 +250,16 @@ impl Binding {
         assert!(pos[1] <= 1.);
 
         match &self.values {
-            BindingValues::Deform(values) => Anim::Deform(
-                interpolate_deform(&values, axis_points, pos)
-                    .into_iter()
-                    .flatten()
-                    .collect(),
-            ),
+            BindingValues::Deform(values) => {
+                let deform = interpolate_deform(&values, axis_points, pos);
+                let len = deform.len();
+                let deform = unsafe {
+                    let mut deform: Vec<f32> = core::mem::transmute(deform);
+                    deform.set_len(len * 2);
+                    deform
+                };
+                Anim::Deform(deform)
+            }
             BindingValues::TransformTX(values) => {
                 Anim::TransformTX(interpolate_f32(&values, axis_points, pos))
             }
