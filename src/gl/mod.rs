@@ -189,9 +189,7 @@ impl<'a> GlRenderer<'a> {
                     self.flatten_nodes(child, Some(uuid));
                 }
             }
-            Node::SimplePhysics { uuid, .. } => {
-                self.push(uuid, EnumNode::SimplePhysics);
-            }
+            Node::SimplePhysics { .. } => (),
             Node::Part {
                 uuid,
                 ref mesh,
@@ -441,8 +439,8 @@ impl<'a> GlRenderer<'a> {
         #[cfg(feature = "debug")]
         let gl = self.gl;
         for &uuid in order {
-            match self.get(uuid).unwrap() {
-                EnumNode::Part(part) => {
+            match self.get(uuid) {
+                Some(EnumNode::Part(part)) => {
                     #[cfg(feature = "debug")]
                     gl.push_debug_group(glow::DEBUG_SOURCE_APPLICATION, 0, &part.name);
                     self.set_stencil(false);
@@ -450,15 +448,15 @@ impl<'a> GlRenderer<'a> {
                     #[cfg(feature = "debug")]
                     gl.pop_debug_group();
                 }
-                EnumNode::Composite(composite) => {
+                Some(EnumNode::Composite(composite)) => {
                     #[cfg(feature = "debug")]
                     gl.push_debug_group(glow::DEBUG_SOURCE_APPLICATION, 0, &composite.name);
                     self.render_composite(composite);
                     #[cfg(feature = "debug")]
                     gl.pop_debug_group();
                 }
-                EnumNode::Node(_) => (),
-                EnumNode::SimplePhysics => (),
+                Some(EnumNode::Node(_)) => (),
+                None => (),
             }
         }
     }
@@ -486,8 +484,7 @@ impl<'a> GlRenderer<'a> {
                         .push(binding.interpolate(&param.axis_points, value)),
                     Some(EnumNode::Composite(_)) => todo!(),
                     Some(EnumNode::Node(_)) => todo!(),
-                    Some(EnumNode::SimplePhysics) => (), // Ignore for now.
-                    None => (), // We don’t create non-enabled nodes, so ignore it too.
+                    None => (), // We don’t create SimplePhysics or disabled nodes.
                 }
             }
         }
@@ -549,7 +546,6 @@ enum EnumNode {
     Part(Part),
     Composite(Composite),
     Node(SimpleNode),
-    SimplePhysics,
 }
 
 #[derive(Debug)]
@@ -583,7 +579,6 @@ impl Part {
                     },
                     node.transform.trans,
                 ),
-                _ => break,
             };
             trans[0] += parent_trans[0];
             trans[1] += parent_trans[1];
