@@ -30,7 +30,9 @@ impl<'a> ParamValues<'a> {
     pub fn new(params: &'a [Param]) -> ParamValues {
         let mut values = Vec::with_capacity(params.len());
         for param in params {
-            values.push(param.defaults);
+            let x = (param.defaults[0] - param.min[0]) / (param.max[0] - param.min[0]);
+            let y = (param.defaults[1] - param.min[1]) / (param.max[1] - param.min[1]);
+            values.push([x, y]);
         }
         ParamValues { params, values }
     }
