@@ -266,11 +266,17 @@ impl Binding {
             BindingValues::TransformTY(values) => {
                 Anim::TransformTY(interpolate_f32(values, axis_points, pos))
             }
+            BindingValues::TransformTZ(values) => {
+                Anim::TransformTZ(interpolate_f32(values, axis_points, pos))
+            }
             BindingValues::TransformSX(values) => {
                 Anim::TransformSX(interpolate_f32(values, axis_points, pos))
             }
             BindingValues::TransformSY(values) => {
                 Anim::TransformSY(interpolate_f32(values, axis_points, pos))
+            }
+            BindingValues::TransformRX(values) => {
+                Anim::TransformRX(interpolate_f32(values, axis_points, pos))
             }
             BindingValues::TransformRY(values) => {
                 Anim::TransformRY(interpolate_f32(values, axis_points, pos))
@@ -279,7 +285,6 @@ impl Binding {
                 Anim::TransformRZ(interpolate_f32(values, axis_points, pos))
             }
             BindingValues::ZSort(values) => Anim::ZSort(interpolate_f32(values, axis_points, pos)),
-            val => panic!("{val:?}"),
         }
     }
 }
