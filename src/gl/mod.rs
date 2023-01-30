@@ -79,15 +79,6 @@ struct Locations {
     trans: Option<glow::NativeUniformLocation>,
 }
 
-impl Locations {
-    fn new() -> Locations {
-        Locations {
-            ratio: None,
-            trans: None,
-        }
-    }
-}
-
 struct MutableStuff {
     prev_program: Option<glow::NativeProgram>,
     prev_stencil: bool,
@@ -119,9 +110,10 @@ impl<'a> GlRenderer<'a> {
             .shader(glow::VERTEX_SHADER, VERTEX)?
             .shader(glow::FRAGMENT_SHADER, FRAGMENT)?
             .link()?;
-        let mut locations = Locations::new();
-        locations.ratio = part_program.get_uniform_location("ratio");
-        locations.trans = part_program.get_uniform_location("trans");
+        let locations = Locations {
+            ratio: part_program.get_uniform_location("ratio"),
+            trans: part_program.get_uniform_location("trans"),
+        };
 
         part_program.use_();
         gl.uniform1f(locations.ratio.as_ref(), height as f32 / width as f32);
