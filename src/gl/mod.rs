@@ -217,10 +217,10 @@ impl<'a> GlRenderer<'a> {
                 let start_indice = self.ibo.len() as u16;
                 let num_indices = mesh.indices.len() as u16;
                 let start_deform = self.current_ibo_offset * 2;
+                let deform = vec![0.; num_verts];
                 self.verts.extend_from_slice(mesh.verts.as_slice());
                 self.uvs.extend_from_slice(mesh.uvs.as_slice());
-                self.deform
-                    .extend_from_slice(vec![0.; num_verts].as_slice());
+                self.deform.extend_from_slice(deform.as_slice());
                 self.ibo.extend(
                     mesh.indices
                         .iter()
@@ -236,13 +236,13 @@ impl<'a> GlRenderer<'a> {
                     start_indice,
                     num_indices,
                     start_deform,
-                    num_verts,
                     transform,
                     blend_mode,
                     textures,
                     parent,
                     masks,
                     anim: Vec::new(),
+                    deform,
                     #[cfg(feature = "debug")]
                     name: name.clone(),
                 };
@@ -489,6 +489,7 @@ impl<'a> GlRenderer<'a> {
             match node {
                 EnumNode::Part(part) => {
                     part.anim.clear();
+                    part.deform.fill(0.);
                 }
                 _ => (),
             }
@@ -508,16 +509,15 @@ impl<'a> GlRenderer<'a> {
                 }
             }
         }
-        for node in self.nodes.values() {
+        for node in self.nodes.values_mut() {
             match node {
                 EnumNode::Part(part) => {
                     let mut dirty = false;
-                    let mut deform = vec![0.; part.num_verts];
-                    for i in part.anim.iter() {
-                        match i {
+                    for anim in part.anim.iter() {
+                        match anim {
                             Anim::Deform(values) => {
                                 dirty = true;
-                                deform
+                                part.deform
                                     .iter_mut()
                                     .enumerate()
                                     .for_each(|(i, x)| *x += values[i]);
@@ -527,7 +527,7 @@ impl<'a> GlRenderer<'a> {
                     }
                     if dirty {
                         self.deform
-                            .update(self.gl, part.start_deform as i32, &deform);
+                            .update(self.gl, part.start_deform as i32, &part.deform);
                     }
                 }
                 _ => (),
@@ -562,13 +562,13 @@ struct Part {
     start_indice: u16,
     num_indices: u16,
     start_deform: u16,
-    num_verts: usize,
     transform: Transform,
     textures: [usize; 3],
     blend_mode: BlendMode,
     parent: u32,
     masks: Vec<Mask>,
     anim: Vec<Anim>,
+    deform: Vec<f32>,
     #[cfg(feature = "debug")]
     name: String,
 }
