@@ -205,7 +205,7 @@ impl<'a> GlRenderer<'a> {
                 let num_verts = mesh.verts.len();
                 assert_eq!(num_verts, mesh.uvs.len());
 
-                let start_indice = self.ibo.len() as u16;
+                let start_index = self.ibo.len() as u16 * 2;
                 let num_indices = mesh.indices.len() as u16;
                 let start_deform = self.current_ibo_offset * 2;
                 let deform = vec![0.; num_verts];
@@ -225,7 +225,7 @@ impl<'a> GlRenderer<'a> {
                 let blend_mode = blend_mode.into();
 
                 let part = Part {
-                    start_indice,
+                    start_index,
                     num_indices,
                     start_deform,
                     transform,
@@ -417,7 +417,7 @@ impl<'a> GlRenderer<'a> {
             glow::TRIANGLES,
             part.num_indices as i32,
             glow::UNSIGNED_SHORT,
-            (part.start_indice as i32) * 2,
+            part.start_index as i32,
         );
     }
 
@@ -547,7 +547,7 @@ enum EnumNode {
 
 #[derive(Debug)]
 struct Part {
-    start_indice: u16,
+    start_index: u16,
     num_indices: u16,
     start_deform: u16,
     transform: Transform,
