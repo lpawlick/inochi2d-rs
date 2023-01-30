@@ -493,15 +493,12 @@ impl<'a> GlRenderer<'a> {
                 EnumNode::Part(part) => {
                     let mut dirty = false;
                     for anim in part.anim.iter() {
-                        match anim {
-                            Anim::Deform(values) => {
-                                dirty = true;
-                                part.deform
-                                    .iter_mut()
-                                    .enumerate()
-                                    .for_each(|(i, x)| *x += values[i]);
-                            }
-                            _ => (),
+                        if let Anim::Deform(values) = anim {
+                            dirty = true;
+                            part.deform
+                                .iter_mut()
+                                .enumerate()
+                                .for_each(|(i, x)| *x += values[i]);
                         }
                     }
                     if dirty {

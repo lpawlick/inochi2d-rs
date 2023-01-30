@@ -251,7 +251,7 @@ impl Binding {
 
         match &self.values {
             BindingValues::Deform(values) => {
-                let deform = interpolate_deform(&values, axis_points, pos);
+                let deform = interpolate_deform(values, axis_points, pos);
                 let len = deform.len();
                 let deform = unsafe {
                     let mut deform: Vec<f32> = core::mem::transmute(deform);
@@ -261,24 +261,24 @@ impl Binding {
                 Anim::Deform(deform)
             }
             BindingValues::TransformTX(values) => {
-                Anim::TransformTX(interpolate_f32(&values, axis_points, pos))
+                Anim::TransformTX(interpolate_f32(values, axis_points, pos))
             }
             BindingValues::TransformTY(values) => {
-                Anim::TransformTY(interpolate_f32(&values, axis_points, pos))
+                Anim::TransformTY(interpolate_f32(values, axis_points, pos))
             }
             BindingValues::TransformSX(values) => {
-                Anim::TransformSX(interpolate_f32(&values, axis_points, pos))
+                Anim::TransformSX(interpolate_f32(values, axis_points, pos))
             }
             BindingValues::TransformSY(values) => {
-                Anim::TransformSY(interpolate_f32(&values, axis_points, pos))
+                Anim::TransformSY(interpolate_f32(values, axis_points, pos))
             }
             BindingValues::TransformRY(values) => {
-                Anim::TransformRY(interpolate_f32(&values, axis_points, pos))
+                Anim::TransformRY(interpolate_f32(values, axis_points, pos))
             }
             BindingValues::TransformRZ(values) => {
-                Anim::TransformRZ(interpolate_f32(&values, axis_points, pos))
+                Anim::TransformRZ(interpolate_f32(values, axis_points, pos))
             }
-            BindingValues::ZSort(values) => Anim::ZSort(interpolate_f32(&values, axis_points, pos)),
+            BindingValues::ZSort(values) => Anim::ZSort(interpolate_f32(values, axis_points, pos)),
             val => panic!("{val:?}"),
         }
     }
