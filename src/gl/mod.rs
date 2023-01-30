@@ -5,7 +5,8 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::glow;
-use crate::{Anim, BlendMode, Mask, Node, Param, Texture, TextureReceiver, Transform};
+use crate::ParamValues;
+use crate::{Anim, BlendMode, Mask, Node, Texture, TextureReceiver, Transform};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
@@ -480,11 +481,7 @@ impl<'a> GlRenderer<'a> {
         gl.clear(glow::COLOR_BUFFER_BIT);
     }
 
-    pub fn animate(
-        &mut self,
-        params: &[Param],
-        values: &std::collections::HashMap<&str, [f32; 2]>,
-    ) {
+    pub fn animate(&mut self, values: &ParamValues) {
         for node in self.nodes.values_mut() {
             match node {
                 EnumNode::Part(part) => {
@@ -494,18 +491,16 @@ impl<'a> GlRenderer<'a> {
                 _ => (),
             }
         }
-        for param in params {
-            if let Some(value) = values.get(param.name.as_str()) {
-                for binding in &param.bindings {
-                    match self.get_mut(binding.node) {
-                        Some(EnumNode::Part(part)) => part
-                            .anim
-                            .push(binding.interpolate(&param.axis_points, *value)),
-                        Some(EnumNode::Composite(_)) => todo!(),
-                        Some(EnumNode::Node(_)) => todo!(),
-                        Some(EnumNode::SimplePhysics) => (), // Ignore for now.
-                        None => (), // We don’t create non-enabled nodes, so ignore it too.
-                    }
+        for (param, value) in values.iter() {
+            for binding in &param.bindings {
+                match self.get_mut(binding.node) {
+                    Some(EnumNode::Part(part)) => part
+                        .anim
+                        .push(binding.interpolate(&param.axis_points, value)),
+                    Some(EnumNode::Composite(_)) => todo!(),
+                    Some(EnumNode::Node(_)) => todo!(),
+                    Some(EnumNode::SimplePhysics) => (), // Ignore for now.
+                    None => (), // We don’t create non-enabled nodes, so ignore it too.
                 }
             }
         }
