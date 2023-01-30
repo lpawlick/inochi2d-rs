@@ -406,7 +406,7 @@ pub struct Param {
     is_vec2: bool,
     min: [f32; 2],
     max: [f32; 2],
-    defaults: [f32; 2],
+    pub defaults: [f32; 2],
     pub axis_points: [Vec<f32>; 2],
     pub bindings: Vec<Binding>,
 }
