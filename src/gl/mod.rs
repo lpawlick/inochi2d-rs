@@ -91,7 +91,7 @@ impl Locations {
 struct MutableStuff {
     prev_program: Option<glow::NativeProgram>,
     prev_stencil: bool,
-    prev_blend_mode: Option<BlendMode>,
+    prev_blend_mode: Option<(u32, u32)>,
     prev_texture: Option<glow::NativeTexture>,
     prev_masks: Vec<Mask>,
 }
@@ -232,6 +232,7 @@ impl<'a> GlRenderer<'a> {
                 let parent = parent.unwrap();
                 let transform = transform.clone();
                 let masks = masks.clone();
+                let blend_mode = blend_mode.into();
 
                 let part = Part {
                     start_indice,
@@ -264,6 +265,7 @@ impl<'a> GlRenderer<'a> {
                 let parent = parent.unwrap();
                 let transform = transform.clone();
                 let children_uuid = children.iter().flat_map(collect_children_uuids).collect();
+                let blend_mode = blend_mode.into();
 
                 let composite = Composite {
                     transform,
@@ -364,20 +366,13 @@ impl<'a> GlRenderer<'a> {
         *prev = Some(texture.texture.clone());
     }
 
-    fn set_blend_mode(&self, mode: BlendMode) {
+    fn set_blend_mode(&self, mode: (u32, u32)) {
         let prev = &mut self.mutable.borrow_mut().prev_blend_mode;
         if *prev == Some(mode) {
             return;
         }
         let gl = &self.gl;
-        match mode {
-            BlendMode::Normal => gl.blend_func(glow::ONE, glow::ONE_MINUS_SRC_ALPHA),
-            BlendMode::Multiply => gl.blend_func(glow::DST_COLOR, glow::ONE_MINUS_SRC_ALPHA),
-            BlendMode::ColorDodge => gl.blend_func(glow::DST_COLOR, glow::ONE),
-            BlendMode::LinearDodge => gl.blend_func(glow::ONE, glow::ONE),
-            BlendMode::Screen => gl.blend_func(glow::ONE, glow::ONE_MINUS_SRC_COLOR),
-            BlendMode::ClipToLower => gl.blend_func(glow::DST_ALPHA, glow::ONE_MINUS_SRC_ALPHA),
-        }
+        gl.blend_func(mode.0, mode.1);
         *prev = Some(mode);
     }
 
@@ -531,9 +526,22 @@ impl<'a> GlRenderer<'a> {
     }
 }
 
+impl From<BlendMode> for (u32, u32) {
+    fn from(mode: BlendMode) -> (u32, u32) {
+        match mode {
+            BlendMode::Normal => (glow::ONE, glow::ONE_MINUS_SRC_ALPHA),
+            BlendMode::Multiply => (glow::DST_COLOR, glow::ONE_MINUS_SRC_ALPHA),
+            BlendMode::ColorDodge => (glow::DST_COLOR, glow::ONE),
+            BlendMode::LinearDodge => (glow::ONE, glow::ONE),
+            BlendMode::Screen => (glow::ONE, glow::ONE_MINUS_SRC_COLOR),
+            BlendMode::ClipToLower => (glow::DST_ALPHA, glow::ONE_MINUS_SRC_ALPHA),
+        }
+    }
+}
+
 struct Composite {
     transform: Transform,
-    blend_mode: BlendMode,
+    blend_mode: (u32, u32),
     parent: u32,
     children: Vec<u32>,
     #[cfg(feature = "debug")]
@@ -559,7 +567,7 @@ struct Part {
     start_deform: u16,
     transform: Transform,
     textures: [usize; 3],
-    blend_mode: BlendMode,
+    blend_mode: (u32, u32),
     parent: u32,
     masks: Vec<Mask>,
     anim: Vec<Anim>,
