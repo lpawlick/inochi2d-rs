@@ -34,7 +34,7 @@ varying vec2 texcoord;
 void main() {
     vec2 pos2 = pos + trans + deform;
     texcoord = vec2(uvs.x, -uvs.y);
-    gl_Position = vec4(pos2.x * ratio / 3072.0, -pos2.y / 3072.0, 0.0, 1.0);
+    gl_Position = vec4(pos2.x * ratio / 2560.0, -pos2.y / 2560.0, 0.0, 1.0);
 }
 ";
 
