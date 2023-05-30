@@ -56,3 +56,6 @@ parallel = []
 encoding = ["image/png", "image/tga"]
 png = ["image/png"]
 debug = []
+
+[lib]
+crate-type = ["cdylib"]

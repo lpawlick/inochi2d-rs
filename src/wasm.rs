@@ -117,6 +117,7 @@ pub fn setup(context: &JsContext, model: &JsModel, textures: JsTextureReceiver) 
     } = context;
     let renderer = gl::setup(gl, &model.0.puppet.nodes, textures.0, *width, *height);
     renderer.clear();
-    let order = gl::sort_nodes_by_zsort(&model.0.puppet.nodes);
+    let num_nodes = gl::count_nodes(&model.0.puppet.nodes);
+    let order = gl::sort_nodes_by_zsort(num_nodes, &model.0.puppet.nodes);
     renderer.render_nodes(&order);
 }
