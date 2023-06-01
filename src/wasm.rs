@@ -11,20 +11,31 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 #[wasm_bindgen]
-pub struct JsModel(Model);
+pub struct JsModel {
+    model: Model,
+}
 
 #[wasm_bindgen]
 pub fn parse(buf: &[u8]) -> JsModel {
     let model = Model::parse(buf).unwrap();
-    JsModel(model)
+    JsModel { model }
 }
 
 #[wasm_bindgen]
-pub struct JsTextureReceiver(TextureReceiver);
+pub struct JsTextureReceiver {
+    receiver: TextureReceiver,
+}
 
 #[wasm_bindgen]
-pub fn decode_textures(model: &mut JsModel) -> JsTextureReceiver {
-    JsTextureReceiver(model.0.decode_textures())
+pub fn decode_textures(model: &mut JsModel) -> JsTextureReceiver 
+{
+    JsTextureReceiver { receiver: model.model.decode_textures() }
+}
+
+#[wasm_bindgen]
+pub struct JsGlRenderer 
+{
+    renderer: gl::GlRenderer<'static>,
 }
 
 #[wasm_bindgen]
@@ -97,15 +108,17 @@ pub fn setup_context(id: &str) -> Result<JsContext, JsValue> {
     })
 }
 
-
 #[wasm_bindgen]
-pub fn setup(context: &JsContext, model: &JsModel, textures: JsTextureReceiver) {
+pub fn setup(context: JsContext, model: JsModel, textures: JsTextureReceiver) -> Result<JsGlRenderer, JsValue> {
     let JsContext {
         gl, width, height, ..
     } = context;
-    let renderer = gl::setup(gl, &model.0.puppet.nodes, textures.0, *width, *height);
+    // This creates a memory leak!
+    let gl_static = Box::leak(Box::new(gl));
+    let renderer = gl::setup(gl_static, &model.model.puppet.nodes, textures.receiver, width, height);
     renderer.clear();
-    let num_nodes = gl::count_nodes(&model.0.puppet.nodes);
-    let order = gl::sort_nodes_by_zsort(num_nodes, &model.0.puppet.nodes);
+    let num_nodes = gl::count_nodes(&model.model.puppet.nodes);
+    let order = gl::sort_nodes_by_zsort(num_nodes, &model.model.puppet.nodes);
     renderer.render_nodes(&order);
+    Ok(JsGlRenderer { renderer })
 }
