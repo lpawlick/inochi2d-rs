@@ -482,8 +482,8 @@ impl<'a> GlRenderer<'a> {
                     Some(EnumNode::Part(part)) => part
                         .anim
                         .push(binding.interpolate(&param.axis_points, value)),
-                    Some(EnumNode::Composite(_)) => todo!(),
-                    Some(EnumNode::Node(_)) => todo!(),
+                    Some(EnumNode::Composite(_)) => (), // ! TODO
+                    Some(EnumNode::Node(_)) => (), // ! TODO
                     None => (), // We don’t create SimplePhysics or disabled nodes.
                 }
             }
