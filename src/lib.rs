@@ -16,6 +16,7 @@ mod tga;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
+use std::collections::HashMap;
 use parser::Param;
 pub use parser::{
     Anim, BlendMode, Mask, Meta, Model, Node, Puppet, Texture, TextureReceiver, Transform,
@@ -24,25 +25,25 @@ pub use parser::{
 pub struct ParamValues<'a> {
     params: &'a [Param],
     values: Vec<[f32; 2]>,
+    index_map: HashMap<String, usize>,
 }
 
 impl<'a> ParamValues<'a> {
     pub fn new(params: &'a [Param]) -> ParamValues {
         let mut values = Vec::with_capacity(params.len());
-        for param in params {
+        let mut index_map = HashMap::new();
+        for (i, param) in params.iter().enumerate() {
             let x = (param.defaults[0] - param.min[0]) / (param.max[0] - param.min[0]);
             let y = (param.defaults[1] - param.min[1]) / (param.max[1] - param.min[1]);
             values.push([x, y]);
+            index_map.insert(param.name.clone(), i);
         }
-        ParamValues { params, values }
+        ParamValues { params, values, index_map }
     }
 
     pub fn set(&mut self, name: &str, value: [f32; 2]) {
-        if let Ok(i) = self
-            .params
-            .binary_search_by(|param| param.name.as_str().cmp(name))
-        {
-            self.values[i] = value;
+        if let Some(i) = self.index_map.get(name) {
+            self.values[*i] = value;
         }
     }
 
