@@ -16,25 +16,53 @@ for parsing, as well as [GLFW](https://www.glfw.org) and
 
 Clone the repository:
 ```shell
-% git clone https://git.linkmauve.fr/inochi2d.git
+git clone https://git.linkmauve.fr/inochi2d.git
 ```
 Build:
 ```shell
-% cargo build --release
+cargo build --release
 ```
 Run:
 ```shell
-% cargo run --release <puppet.inp>
+cargo run --release <puppet.inp>
 ```
 
 You can find two example puppets in [Inochi2D’s example models](https://github.com/Inochi2D/example-models).
 
-## TODO
+## WebGL support using WebAssembly
+
+You will need to enable the wasm32-unknown-unknown target (for instance using rustup):
+
+```shell
+rustup target add wasm32-unknown-unknown
+```
+
+Then install wasm-bindgen (also available in ArchLinux):
+
+```shell
+cargo install wasm-bindgen
+```
+
+Then you can build the wasm file and its assorted helper JS file:
+
+```shell
+cargo rustc --lib --crate-type cdylib  
+cargo build --target=wasm32-unknown-unknown --lib --release --no-default-features
+wasm-bindgen target/wasm32-unknown-unknown/release/inochi2d.wasm --target=web --out-dir=pkg
+```
+
+Everything you need will be in the pkg/ directory. You can now import the JS file from your own scripts, check the example /examples/wasm_example.js included here.
+
+## Status
 
 - <input type="checkbox" disabled="" checked=""/> Rendering (at least for those two models)
-- <input type="checkbox" disabled=""/> Physics
-- <input type="checkbox" disabled=""/> Animations
-- <input type="checkbox" disabled=""/> Face tracking
+    - Tested platforms:
+        - <input type="checkbox" disabled="" checked=""/> Thinkpad x280 running ArchLinux
+        - <input type="checkbox" disabled="" checked=""/> PinePhone running ArchLinuxARM
+        - <input type="checkbox" disabled="" checked=""/> WebGL in Firefox
+- <input type="checkbox" disabled="" checked=""/> Animations (incomplete)
+- <input type="checkbox" disabled="" /> Physics
+- <input type="checkbox" disabled="" /> Face tracking
 
 ## Screenshots
 
