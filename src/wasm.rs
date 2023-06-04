@@ -9,6 +9,8 @@ use crate::{gl, Model, TextureReceiver};
 use js_sys::{Array, Boolean, JsString, Object};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use crate::ParamValues;
+use std::collections::HashMap;
 
 #[wasm_bindgen]
 pub struct JsModel {
@@ -35,7 +37,50 @@ pub fn decode_textures(model: &mut JsModel) -> JsTextureReceiver
 #[wasm_bindgen]
 pub struct JsGlRenderer 
 {
+    model: JsModel,
     renderer: gl::GlRenderer<'static>,
+}
+
+#[wasm_bindgen]
+impl JsGlRenderer 
+{
+    pub fn animate(&mut self, params: js_sys::Object) 
+    {
+        let mut param_map: HashMap<String, [f32; 2]> = HashMap::new();
+        let keys = js_sys::Reflect::own_keys(&params).expect("Failed to get object keys");
+        for key in keys.iter() {
+            if let Some(key_str) = key.as_string() {
+                if let Ok(js_value) = js_sys::Reflect::get(&params, &key) {
+                    if let Ok(js_arr) = js_value.dyn_into::<js_sys::Array>() {
+                        let x = js_arr.get(0).as_f64().unwrap_or(0.0) as f32;
+                        let y = js_arr.get(1).as_f64().unwrap_or(0.0) as f32;
+                        param_map.insert(key_str, [x, y]);
+                    }
+                }
+            }
+        }
+
+        let mut param_values = ParamValues::new(&self.model.model.puppet.param);
+
+        // Iterate over all parameters and update them if found
+        for (key, value) in param_map.iter() 
+        {
+            param_values.set(key, *value);
+        }
+        self.renderer.animate(&param_values);
+    }
+
+    pub fn clear(&self) 
+    {
+        self.renderer.clear();
+    }
+
+    pub fn render(&self) 
+    {
+        let num_nodes = gl::count_nodes(&self.model.model.puppet.nodes);
+        let order = gl::sort_nodes_by_zsort(num_nodes, &self.model.model.puppet.nodes);
+        self.renderer.render_nodes(&order);
+    }
 }
 
 #[wasm_bindgen]
@@ -120,5 +165,5 @@ pub fn setup(context: JsContext, model: JsModel, textures: JsTextureReceiver) ->
     let num_nodes = gl::count_nodes(&model.model.puppet.nodes);
     let order = gl::sort_nodes_by_zsort(num_nodes, &model.model.puppet.nodes);
     renderer.render_nodes(&order);
-    Ok(JsGlRenderer { renderer })
+    Ok(JsGlRenderer { renderer, model })
 }
