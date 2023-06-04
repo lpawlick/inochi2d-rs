@@ -103,16 +103,29 @@ pub fn has_bptc(JsContext { has_bptc, .. }: &JsContext) -> bool {
 }
 
 #[wasm_bindgen]
-pub fn setup_context(id: &str) -> Result<JsContext, JsValue> {
+pub fn setup_context(id: &str, scaling: Option<bool>) -> Result<JsContext, JsValue> {
     let window = web_sys::window().ok_or(JsValue::NULL)?;
+    let scale = window.device_pixel_ratio();
     let document = window.document().ok_or(JsValue::NULL)?;
     let canvas = document
         .get_element_by_id(id)
         .ok_or(JsValue::from_str("Canvas not found!"))?
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .or(Err(JsValue::from_str("Not a canvas element!")))?;
-    let width = canvas.width();
-    let height = canvas.height();
+    let (width, height) = if scale != 1.0 && scaling.unwrap_or(false) {
+        let width = canvas.width();
+        let height = canvas.height();
+        let scaled_width = (width as f64 * scale) as u32;
+        let scaled_height = (height as f64 * scale) as u32;
+        canvas.set_width(scaled_width);
+        canvas.set_height(scaled_height);
+        let style = canvas.style();
+        style.set_property("width", &format!("{width}px"))?;
+        style.set_property("height", &format!("{height}px"))?;
+        (scaled_width, scaled_height)
+    } else {
+        (canvas.width(), canvas.height())
+    };
     let params = Array::from_iter([
         JsValue::from(JsString::from("stencil")),
         JsValue::from(Boolean::from(true)),
