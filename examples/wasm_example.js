@@ -65,4 +65,29 @@ for (let input of inputs) {
   });
 }
 
+document.addEventListener('pointermove', function(evt) 
+{
+  const x = evt.clientX / window.innerWidth;
+  const y = evt.clientY / window.innerHeight;
+
+  if (renderer !== undefined) 
+  {
+    // Create an object with parameter names as keys and their new values as two-element arrays.
+    let params = {
+      'Eye:: Left:: Move': [x, 0.0],
+      'Eye:: Right:: Move': [x, 0.0],
+      'Eye:: Left:: XY': [x, 1.0 - y],
+      'Eye:: Right:: XY': [x, 1.0 - y],
+      'Eyebrow:: Left': [y, 0.0],
+      'Eyebrow:: Right\0': [y, 0.0]
+    };
+
+    console.log(renderer, params);
+    // Pass the new object to the `renderer.animate` function.
+    renderer.animate(params);
+    renderer.clear();
+    renderer.render();
+  }
+});
+
 run();
