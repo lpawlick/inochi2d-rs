@@ -104,6 +104,7 @@ pub fn has_bptc(JsContext { has_bptc, .. }: &JsContext) -> bool {
 
 #[wasm_bindgen]
 pub fn setup_context(id: &str, scaling: Option<bool>) -> Result<JsContext, JsValue> {
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook)); // Setup actually helpful error messages on panic
     let window = web_sys::window().ok_or(JsValue::NULL)?;
     let scale = window.device_pixel_ratio();
     let document = window.document().ok_or(JsValue::NULL)?;
