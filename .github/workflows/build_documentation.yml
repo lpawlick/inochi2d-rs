@@ -1,0 +1,43 @@
+name: Build and Publish Documentation
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install minimal rust nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Build Documentation
+        run: |
+          RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc
+
+      - name: Extract Repository Information
+        id: extract_repo
+        run: |
+          echo "::set-output name=current_repo::$(basename $GITHUB_REPOSITORY)"
+
+      - name: Deploy to lpawlick.github.io
+        run: |
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+            git clone https://${{ secrets.ACCESS_TOKEN }}@github.com/lpawlick/lpawlick.github.io.git
+            mkdir -p lpawlick.github.io/projects/${{ steps.extract_repo.outputs.current_repo }}/
+            cp -r ./target/doc/* lpawlick.github.io/projects/${{ steps.extract_repo.outputs.current_repo }}/
+            cd lpawlick.github.io
+            git add .
+            COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
+            if [ -z "$COMMIT_MESSAGE" ]; then
+              COMMIT_MESSAGE="Manual ${{ steps.extract_repo.outputs.current_repo }} Documentation Update"
+            fi
+            git commit -m "$COMMIT_MESSAGE"
+            git push https://${{ secrets.ACCESS_TOKEN }}@github.com/lpawlick/lpawlick.github.io.git
