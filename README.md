@@ -1,6 +1,6 @@
 # inochi2d-rs
 
-This is a fork of [linkmauve/inochi2d-rs](https://git.linkmauve.fr/inochi2d-rs) with a focus on WebAssembly for my react component [inochi2d_react](https://github.com/lpawlick/inochi2d_react).
+This is a fork of [linkmauve/inochi2d-rs](https://linkmauve.fr/dev/inochi2d/) with a focus on WebAssembly for my react component [inochi2d_react](https://github.com/lpawlick/inochi2d_react).
 Documentation for my fork can be found [here](https://docs.pawlick.dev/projects/inochi2d/). This is a work in progress and 0.8 models are not supported yet.
 
 [![crates.io](https://img.shields.io/crates/v/inochi2d.svg)](https://crates.io/crates/inochi2d)
